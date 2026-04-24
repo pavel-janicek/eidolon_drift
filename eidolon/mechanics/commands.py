@@ -114,27 +114,45 @@ def _cmd_inspect(game, target):
     sector = game.map.get_sector(game.player.x, game.player.y)
     if sector is None:
         return "Nothing to inspect."
-    # try to find object by name
+
+    target_l = target.strip().lower()
+    # 1) exact match on dict name/title
     for o in sector.objects:
         if isinstance(o, dict):
             name = o.get("name", "").lower()
-            if target.lower() == name or target.lower() == o.get("title", "").lower():
-                # return detailed description
-                desc = o.get("description", "No details available.")
-                # if it's a log, return its content or a fragment
-                if o.get("type") == "log":
-                    content = o.get("content", "")
-                    if o.get("fragmented"):
-                        # show partial content
-                        snippet = content[: min(120, len(content))]
-                        return f"{o.get('title','log')}: {snippet} ... (fragmented)"
-                    return f"{o.get('title','log')}: {content}"
-                return desc
-        else:
-            # object is a plain string
-            if target.lower() == str(o).lower():
+            title = o.get("title", "").lower()
+            if target_l == name or target_l == title:
+                return _describe_object(o)
+    # 2) case-insensitive substring match on dict fields
+    for o in sector.objects:
+        if isinstance(o, dict):
+            name = o.get("name", "").lower()
+            title = o.get("title", "").lower()
+            if target_l in name or target_l in title:
+                return _describe_object(o)
+    # 3) plain string objects: exact or substring
+    for o in sector.objects:
+        if isinstance(o, str):
+            ol = o.lower()
+            if target_l == ol or target_l in ol:
                 return f"You inspect the {o}. It seems unremarkable."
+
     return f"No object named '{target}' found here."
+
+def _describe_object(o: dict) -> str:
+    # returns a human-friendly description for dict objects
+    typ = o.get("type", "object")
+    if typ == "log":
+        content = o.get("content", "")
+        if o.get("fragmented"):
+            snippet = content[: min(120, len(content))]
+            return f"{o.get('title','log')}: {snippet} ... (fragmented)"
+        return f"{o.get('title','log')}: {content}"
+    if typ == "enc":
+        return o.get("description", "An encrypted data fragment. Try 'decrypt <name>'.")
+    # generic object
+    return o.get("description", o.get("title", o.get("name", "You see nothing special about it.")))
+
 
 def _cmd_decrypt(game, target):
     sector = game.map.get_sector(game.player.x, game.player.y)
