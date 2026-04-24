@@ -47,6 +47,14 @@ def handle_command(game, raw_cmd: str) -> str:
 
     if verb == "status":
         return _cmd_status(game)
+    
+    if verb == "inspect-all":
+        sector = game.map.get_sector(game.player.x, game.player.y)
+        if sector is None:
+            return "No sector."
+        # show raw objects for debugging
+        return repr(sector.objects)
+
 
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
 
