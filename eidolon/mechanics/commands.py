@@ -118,31 +118,66 @@ def _cmd_logs(game):
     lines.append("Use 'inspect <log name>' to read a log (e.g. inspect log-1).")
     return "\n".join(lines)
 
+def _normalize(s: str) -> str:
+    # lower, strip punctuation, remove simple articles
+    import re
+    s = s.lower().strip()
+    s = re.sub(r"[^\w\s\-]", "", s)  # remove punctuation except dash
+    # remove common articles
+    s = re.sub(r"\b(a|an|the)\b", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
 def _cmd_inspect(game, target):
     sector = game.map.get_sector(game.player.x, game.player.y)
     if sector is None:
         return "Nothing to inspect."
 
-    target_l = target.strip().lower()
-    # 1) exact match on dict name/title
+    target_norm = _normalize(target)
+
+    # helper to describe dict objects
+    def describe(o: dict) -> str:
+        typ = o.get("type", "object")
+        if typ == "log":
+            content = o.get("content", "")
+            if o.get("fragmented"):
+                snippet = content[: min(120, len(content))]
+                return f"{o.get('title','log')}: {snippet} ... (fragmented)"
+            return f"{o.get('title','log')}: {content}"
+        if typ == "enc":
+            return o.get("description", "An encrypted data fragment. Try 'decrypt <name>'.")
+        return o.get("description", o.get("title", o.get("name", "You see nothing special about it.")))
+
+    # 1) exact match on dict name/title (normalized)
     for o in sector.objects:
         if isinstance(o, dict):
-            name = o.get("name", "").lower()
-            title = o.get("title", "").lower()
-            if target_l == name or target_l == title:
-                return _describe_object(o)
-    # 2) case-insensitive substring match on dict fields
+            name = _normalize(o.get("name", ""))
+            title = _normalize(o.get("title", ""))
+            if target_norm == name or target_norm == title:
+                return describe(o)
+
+    # 2) substring match on dict fields
     for o in sector.objects:
         if isinstance(o, dict):
-            name = o.get("name", "").lower()
-            title = o.get("title", "").lower()
-            if target_l in name or target_l in title:
-                return _describe_object(o)
-    # 3) plain string objects: exact or substring
+            name = _normalize(o.get("name", ""))
+            title = _normalize(o.get("title", ""))
+            if target_norm in name or target_norm in title:
+                return describe(o)
+
+    # 3) token overlap match (e.g., "crew jacket" vs "jacket")
+    target_tokens = set(target_norm.split())
+    for o in sector.objects:
+        if isinstance(o, dict):
+            combined = " ".join([o.get("name",""), o.get("title","")])
+            combined_norm = _normalize(combined)
+            tokens = set(combined_norm.split())
+            if tokens and target_tokens & tokens:
+                return describe(o)
+
+    # 4) plain string objects: exact or substring normalized
     for o in sector.objects:
         if isinstance(o, str):
-            ol = o.lower()
-            if target_l == ol or target_l in ol:
+            if target_norm == _normalize(o) or target_norm in _normalize(o):
                 return f"You inspect the {o}. It seems unremarkable."
 
     return f"No object named '{target}' found here."
