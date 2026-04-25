@@ -60,13 +60,18 @@ def _run(stdscr):
         except Exception as e:
             game.push_message(f"[debug] failed to create renderer: {e}")
 
+        # vytvoř input handler pokud existuje a přiřaď ho
     if InputHandler is not None:
         try:
-            game.input_handler = InputHandler(game)
+            # předáme game a stdscr (některé verze InputHandler očekávají stdscr)
+            game.input_handler = InputHandler(game, stdscr)
+            game.push_message("[debug] InputHandler created")
         except Exception as e:
             game.push_message(f"[debug] failed to create input handler: {e}")
     else:
         game.push_message("[debug] InputHandler not found; using Game's internal input loop")
+
+
 
     game.push_message(
         "[debug] game starting; renderer set: "

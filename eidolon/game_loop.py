@@ -89,33 +89,85 @@ class Game:
             self.renderer.render()
 
     def run(self, stdscr=None):
+        import time
+
         try:
-            self.push_message("[debug] Game.run started")
-            while self.running:
+            self.push_message("[debug] Game.run starting")
+        except Exception:
+            pass
+
+        if getattr(self, "renderer", None):
+            try:
+                self.renderer.render()
+                try:
+                    self.push_message("[debug] initial renderer.render() OK")
+                except Exception:
+                    pass
+            except Exception as e:
+                try:
+                    self.push_message(f"[debug] initial renderer.render() failed: {e}")
+                except Exception:
+                    pass
+
+        try:
+            while getattr(self, "running", True):
                 if getattr(self, "renderer", None):
                     try:
                         self.renderer.render()
                     except Exception as e:
-                        self.push_message(f"[debug] renderer.render error: {e}")
+                        try:
+                            self.push_message(f"[debug] renderer.render error: {e}")
+                        except Exception:
+                            pass
 
                 if getattr(self, "input_handler", None):
                     try:
                         self.input_handler.process_once()
                     except Exception as e:
-                        self.push_message(f"[debug] input_handler error: {e}")
+                        try:
+                            self.push_message(f"[debug] input_handler error: {e}")
+                        except Exception:
+                            pass
                 else:
                     if stdscr:
-                        ch = stdscr.getch()
-                        if ch in (ord("q"), 27):
-                            self.push_message("[debug] quitting via key")
-                            self.running = False
+                        try:
+                            ch = stdscr.getch()
+                            if ch in (ord("q"), 27):
+                                try:
+                                    self.push_message("[debug] quitting via key")
+                                except Exception:
+                                    pass
+                                self.running = False
+                        except Exception:
+                            pass
 
                 try:
                     self.tick()
                 except Exception as e:
-                    self.push_message(f"[debug] tick error: {e}")
+                    try:
+                        self.push_message(f"[debug] tick error: {e}")
+                    except Exception:
+                        pass
+
+                time.sleep(0.02)
+
+                if stdscr:
+                    try:
+                        maxy, maxx = stdscr.getmaxyx()
+                        for i, line in enumerate(self.messages[-6:], start=1):
+                            try:
+                                stdscr.addstr(i, 1, line[:maxx - 2])
+                            except Exception:
+                                pass
+                        stdscr.refresh()
+                    except Exception:
+                        pass
+
         except Exception as e:
-            self.push_message(f"[fatal] Game.run crashed: {e}")
+            try:
+                self.push_message(f"[fatal] Game.run crashed: {e}")
+            except Exception:
+                pass
             raise
 
     def tick(self, action_type="move"):

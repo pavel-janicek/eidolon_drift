@@ -13,6 +13,7 @@ class OutputRenderer:
         self.map = ship_map
         self.player = player
         self.game = game
+        self._layout_debug_emitted = False
 
         # windows
         self.map_win = None
@@ -76,7 +77,18 @@ class OutputRenderer:
             return False
 
     def _layout(self):
-        self.game.push_message(f"[debug] msg_win is {'set' if self.msg_win else 'None'}")
+        if not self._layout_debug_emitted:
+            try:
+                info = {
+                "term": (maxy, maxx),
+                "map_win": None if not self.map_win else (self.map_win.getbegyx(), self.map_win.getmaxyx()),
+                "status_win": None if not self.status_win else (self.status_win.getbegyx(), self.status_win.getmaxyx()),
+                "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
+                }
+                self.game.push_message(f"[debug] layout info: {info}")
+            except Exception:
+                pass
+        self._layout_debug_emitted = True
         maxy, maxx = self.stdscr.getmaxyx()
         status_h = 3
         msg_h = max(4, maxy // 5)
@@ -124,7 +136,6 @@ class OutputRenderer:
             self.game.push_message(f"[debug] msg_win error: {e}")
 
     def render(self):
-        self.game.push_message(f"[debug] render called, messages_count={len(self.game.messages)}")
         try:
             self._layout()
         except Exception as e:

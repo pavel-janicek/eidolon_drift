@@ -5,20 +5,21 @@ from typing import Optional
 
 class InputHandler:
     """
-    InputHandler pracuje s instancí Game. Game se předává do konstruktoru.
-    Metoda process_once() se volá z Game.run() každou iteraci a zpracuje
-    jeden vstup (pokud nějaký je). Pokud není žádný vstup, vrátí None.
+    InputHandler přijímá buď (game, stdscr) nebo jen game (který má atribut stdscr),
+    nebo jen stdscr (pro starší verze). Konstruktor nevyhazuje chybu pokud stdscr
+    není dostupné — místo toho bude process_once ticho ignorovat vstup.
     """
 
-    def __init__(self, game):
-        # očekáváme, že game má atribut stdscr (předaný z curses.wrapper)
+    def __init__(self, game=None, stdscr=None):
+        # pokud byl předán pouze stdscr (starší API), podpoříme to
+        if stdscr is None and game is not None and hasattr(game, "stdscr"):
+            stdscr = getattr(game, "stdscr")
+        # pokud byl předán jen stdscr (bez game), game zůstane None
         self.game = game
-        self.stdscr = getattr(game, "stdscr", None)
-        # fallback: pokud stdscr není v game, očekáváme, že main předá stdscr při vytváření Game
-        if self.stdscr is None:
-            raise ValueError("InputHandler requires game with attribute 'stdscr' (curses window).")
+        self.stdscr = stdscr
         self.command_mode = False
         self.cmd_buffer = ""
+
 
     # --- nízkoúrovňě čte klávesu a vrací tokeny ---
     def _read_key(self) -> Optional[str]:
