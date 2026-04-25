@@ -6,6 +6,8 @@ from eidolon.io.input_handler import InputHandler
 from eidolon.io.output_renderer import OutputRenderer
 from eidolon.mechanics.movement import move_player
 from eidolon.mechanics import commands as cmdmod
+from eidolon.mechanics.events import EventEngine
+from eidolon.mechanics.event_loader import load_event_defs
 
 
 class Game:
@@ -28,6 +30,13 @@ class Game:
         self.renderer = None
         self.running = True
         self.messages = []
+        # after self.messages initialization
+        # load event definitions and create engine
+        self.event_defs = load_event_defs()
+        self.event_engine = EventEngine(self, event_defs=self.event_defs)
+        # last position for linger tracking
+        self._last_pos = (self.player.x, self.player.y)
+
         # initial message
         self.push_message("Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod.")
         self.push_message("Type 'help' for commands. Use WASD to move.")
@@ -61,6 +70,8 @@ class Game:
                 result = cmdmod.handle_command(self, cmd)
                 if result:
                     self.push_message(result)
+                # tick after command (inspect/use may count as an action)
+                self.tick(action_type="command")
             else:
                 moved = move_player(self.map, self.player, key)
                 if moved:
@@ -69,8 +80,51 @@ class Game:
                     self.push_message(f"Moved to {name}.")
                 else:
                     self.push_message("Cannot move there.")
+                # tick after movement
+                self.tick(action_type="move")
             self.renderer.render()
 
     def run(self):
         curses.wrapper(self._curses_main)
 
+    def tick(self, action_type="move"):
+        """
+        Called after each player action (move, inspect, use, wait).
+        Handles linger counters and triggers events when thresholds are reached.
+        """
+        sector = self.map.get_sector(self.player.x, self.player.y)
+        if sector is None:
+            return
+
+        # update linger counter: increment only if player stayed in same tile
+        if getattr(self, "_last_pos", None) == (self.player.x, self.player.y):
+            sector.linger_counter = getattr(sector, "linger_counter", 0) + 1
+        else:
+            # reset linger on move to a new tile
+            sector.linger_counter = 0
+
+        self._last_pos = (self.player.x, self.player.y)
+
+        # check thresholds: sector.linger_thresholds may map threshold -> list of event ids
+        thresholds = getattr(sector, "linger_thresholds", {}) or {}
+        for th, event_list in list(thresholds.items()):
+            # event_list may be a list of event ids
+            if sector.linger_counter >= int(th):
+                # trigger each event id
+                for event_id in (event_list if isinstance(event_list, list) else [event_list]):
+                    event_def = self.event_defs.get(event_id)
+                    if event_def:
+                        self.event_engine.trigger(event_def, sector)
+                # reset or remove threshold so it doesn't retrigger immediately
+                # here we reset the counter for that sector
+                sector.linger_counter = 0
+    
+
+    def handle_death(self, reason="You died."):
+        # push final messages and stop the game loop
+        self.push_message(reason)
+        self.push_message("You have died. Game over.")
+        # optionally render one last time so player sees the message
+        if self.renderer:
+            self.renderer.render()
+        self.running = False

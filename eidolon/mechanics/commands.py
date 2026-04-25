@@ -261,22 +261,35 @@ def _cmd_status(game):
 
 def _cmd_use(game, target):
     target_norm = _normalize(target)
-    sector = game.map.get_sector(game.player.x, game.player.y)
-    if sector is None:
-        return "Nothing to use here."
-    # find object by name/title
-    for o in sector.objects:
-        if isinstance(o, dict):
-            name = _normalize(o.get("name",""))
-            title = _normalize(o.get("title",""))
+    # search inventory first
+    for i, it in enumerate(game.player.inventory):
+        if isinstance(it, dict):
+            name = _normalize(it.get("name",""))
+            title = _normalize(it.get("title",""))
             if target_norm == name or target_norm == title or target_norm in name or target_norm in title:
-                # escape pod logic
-                if o.get("name") == "escape-pod":
-                    # victory
-                    game.push_message("You interface with the escape pod. Launch sequence initiated...")
-                    game.push_message("Escape pod launched. You survived Eidolon.")
-                    game.running = False
-                    return "Victory: escape pod launched."
-                # other useable items can be handled here
-                return f"You use the {o.get('title', o.get('name'))}. Nothing notable happens."
+                # handle on_use
+                on_use = it.get("on_use")
+                if on_use and on_use.get("action") == "heal":
+                    amt = int(on_use.get("amount", 0))
+                    game.player.heal(amt)
+                    game.player.inventory.pop(i)
+                    return f"You use the {it.get('title','item')}. Restored {amt} health."
+                return f"You use the {it.get('title','item')}. Nothing obvious happens."
+    # search sector objects (similar logic)
+    sector = game.map.get_sector(game.player.x, game.player.y)
+    if sector:
+        for i, o in enumerate(sector.objects):
+            if isinstance(o, dict):
+                name = _normalize(o.get("name",""))
+                title = _normalize(o.get("title",""))
+                if target_norm == name or target_norm == title or target_norm in name or target_norm in title:
+                    on_use = o.get("on_use")
+                    if on_use and on_use.get("action") == "heal":
+                        amt = int(on_use.get("amount", 0))
+                        game.player.heal(amt)
+                        # remove if consumable
+                        sector.objects.pop(i)
+                        return f"You use the {o.get('title','item')}. Restored {amt} health."
+                    return f"You interact with the {o.get('title')}. Nothing obvious happens."
     return f"No usable object named '{target}' found here."
+

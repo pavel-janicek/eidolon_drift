@@ -1,0 +1,28 @@
+[
+  {
+    "id": "residue_nausea",
+    "type": "linger_damage",
+    "damage": 2,
+    "message": "The residue burns your lungs. You lose {damage} health.",
+    "death_message": "You choke on the residue and collapse.",
+    "repeatable": true,
+    "cooldown": 3
+  },
+  {
+    "id": "signal_headache",
+    "type": "linger_damage",
+    "damage": 1,
+    "message": "The signal pulses; a headache racks you. -{damage} HP.",
+    "repeatable": true,
+    "cooldown": 4
+  },
+  {
+    "id": "spawn_small_anomaly",
+    "type": "spawn_anomaly",
+    "name": "micro-anomaly",
+    "title": "Micro Anomaly",
+    "description": "A small unstable anomaly.",
+    "message": "A micro anomaly coalesces nearby.",
+    "linger_damage": 1
+  }
+]
