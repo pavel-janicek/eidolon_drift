@@ -131,3 +131,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+eidolon/io/__pycache__/output_renderer.cpython-312.pyc
