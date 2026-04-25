@@ -8,15 +8,21 @@ class OutputRenderer:
         self.map = ship_map
         self.player = player
         self.game = game
-        self._init_colors()
+        self.colors_available = self._init_colors()
 
     def _init_colors(self):
         if curses.has_colors():
-            curses.start_color()
-            curses.init_pair(1, curses.COLOR_CYAN, -1)
-            curses.init_pair(2, curses.COLOR_YELLOW, -1)
-            curses.init_pair(3, curses.COLOR_GREEN, -1)
-            curses.init_pair(4, curses.COLOR_RED, -1)
+            try:
+                curses.start_color()
+                curses.init_pair(1, curses.COLOR_CYAN, -1)
+                curses.init_pair(2, curses.COLOR_YELLOW, -1)
+                curses.init_pair(3, curses.COLOR_GREEN, -1)
+                curses.init_pair(4, curses.COLOR_RED, -1)
+                return True
+            except curses.error:
+                # Colors not supported, use defaults
+                pass
+        return False
 
     def render(self):
         self.stdscr.erase()
@@ -24,7 +30,8 @@ class OutputRenderer:
 
         title = "EIDOLON DRIFT - Incident Response Terminal"
         try:
-            self.stdscr.addstr(0, 0, title, curses.color_pair(1) | curses.A_BOLD)
+            attr = curses.color_pair(1) | curses.A_BOLD if self.colors_available else curses.A_BOLD
+            self.stdscr.addstr(0, 0, title, attr)
         except curses.error:
             pass
 

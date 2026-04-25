@@ -7,6 +7,7 @@ from eidolon.io.output_renderer import OutputRenderer
 from eidolon.mechanics.movement import move_player
 from eidolon.mechanics import commands as cmdmod
 
+
 class Game:
     def __init__(self, stdscr=None):
         self.stdscr = stdscr
@@ -72,3 +73,4 @@ class Game:
 
     def run(self):
         curses.wrapper(self._curses_main)
+

@@ -63,4 +63,81 @@ class MapGenerator:
             })
         return Map(self.width, self.height, grid)
 
-    # keep _make_description, _random_environment, _populate_objects as before
+    def _make_description(self, sector_type):
+        descriptions = {
+            "BRIDGE": "The command center of the Eidolon. Consoles flicker with emergency lights. The captain's chair sits empty.",
+            "ENGINEERING": "A maze of conduits and machinery. Humming engines provide power to the ship. Warning lights blink sporadically.",
+            "CREW": "Crew quarters. Bunks line the walls, personal effects scattered about. The air smells of recycled oxygen.",
+            "MEDBAY": "Medical bay. Examination tables and diagnostic equipment. Emergency supplies are stored in cabinets.",
+            "CARGO": "Cargo hold. Crates and containers are secured to the floor. The space echoes with the hum of life support.",
+            "AIRLOCK": "Airlock chamber. Heavy doors seal the entrance to space. Suits hang on racks, ready for EVA.",
+            "EMPTY": "An empty corridor. Dim lights cast long shadows. The silence is broken only by distant machinery."
+        }
+        return descriptions.get(sector_type, "An unremarkable sector.")
+
+    def _random_environment(self, sector_type):
+        base_env = {
+            "BRIDGE": "Control panels and navigation displays dominate the room.",
+            "ENGINEERING": "Pipes and cables snake across the walls and ceiling.",
+            "CREW": "Personal lockers and sleeping pods line the walls.",
+            "MEDBAY": "Medical scanners and treatment equipment are visible.",
+            "CARGO": "Storage containers and cargo nets fill the space.",
+            "AIRLOCK": "Pressure suits and emergency equipment are stored here.",
+            "EMPTY": "Bare walls and minimal lighting characterize this area."
+        }
+        env = base_env.get(sector_type, "The environment is sparse and functional.")
+        # Add random variation
+        variations = [
+            " The air is cool and still.",
+            " A faint vibration runs through the floor.",
+            " Emergency lighting casts an eerie glow.",
+            " The sound of distant alarms echoes faintly.",
+            " Scattered debris litters the floor."
+        ]
+        if random.random() < 0.3:  # 30% chance
+            env += random.choice(variations)
+        return env
+
+    def _populate_objects(self, sector, sector_type):
+        # Add objects based on sector type
+        if sector_type == "BRIDGE":
+            if random.random() < 0.5:
+                sector.objects.append({
+                    "type": "log",
+                    "name": "captains-log",
+                    "title": "Captain's Log Terminal",
+                    "description": "A terminal displaying the captain's final log entries."
+                })
+        elif sector_type == "ENGINEERING":
+            if random.random() < 0.4:
+                sector.objects.append({
+                    "type": "item",
+                    "name": "wrench",
+                    "title": "Engineering Wrench",
+                    "description": "A heavy wrench, useful for repairs."
+                })
+        elif sector_type == "MEDBAY":
+            if random.random() < 0.6:
+                sector.objects.append({
+                    "type": "item",
+                    "name": "medkit",
+                    "title": "Medical Kit",
+                    "description": "A kit containing bandages and painkillers."
+                })
+        elif sector_type == "CARGO":
+            if random.random() < 0.3:
+                sector.objects.append({
+                    "type": "item",
+                    "name": "ration",
+                    "title": "Emergency Ration",
+                    "description": "A sealed packet of food and water."
+                })
+        # Random anomalies in any sector
+        if random.random() < 0.1:  # 10% chance
+            sector.objects.append({
+                "type": "anomaly",
+                "name": "strange-signal",
+                "title": "Strange Signal",
+                "description": "An anomalous reading on your scanner."
+            })
+
