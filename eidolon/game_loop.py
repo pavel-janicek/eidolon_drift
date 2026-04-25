@@ -1,6 +1,5 @@
 # eidolon/game_loop.py
 import curses
-from pydoc import text
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
@@ -14,9 +13,8 @@ from eidolon.mechanics.event_loader import load_event_defs
 class Game:
     def __init__(self, stdscr=None):
         self.stdscr = stdscr
-        # generate ship map
         self.map = MapGenerator().generate()
-        # find a starting airlock sector (first found)
+
         start = None
         for (x, y), s in self.map.grid.items():
             if getattr(s, "type", "").upper() == "AIRLOCK":
@@ -24,39 +22,35 @@ class Game:
                 break
         if start is None:
             start = (0, 0)
-        # create player at start
+
         self.player = Player(x=start[0], y=start[1])
-        # other runtime fields
         self.input_handler = None
         self.renderer = None
         self.running = True
         self.messages = []
-        self.push_message("[debug] game initialized, messages buffer created")
-        # after self.messages initialization
-        # load event definitions and create engine
         self.event_defs = load_event_defs()
         self.event_engine = EventEngine(self, event_defs=self.event_defs)
-        # last position for linger tracking
         self._last_pos = (self.player.x, self.player.y)
 
-        # initial message
-        self.push_message("Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod.")
+        self.push_message("[debug] game initialized, messages buffer created")
+        self.push_message(
+            "Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod."
+        )
         self.push_message("Type 'help' for commands. Use WASD to move.")
 
     def push_message(self, text):
         if not hasattr(self, "messages"):
             self.messages = []
+
         self.messages.append(str(text))
-    # keep last 200 messages
         if len(self.messages) > 200:
             self.messages = self.messages[-200:]
-    # optional: also write to disk for offline debugging
-    try:
-        with open("eidolon_messages.log", "a", encoding="utf-8") as f:
-            f.write(str(text).replace("\n", " ") + "\n")
-    except Exception:
-        pass
 
+        try:
+            with open("eidolon_messages.log", "a", encoding="utf-8") as f:
+                f.write(str(text).replace("\n", " ") + "\n")
+        except Exception:
+            pass
 
     def _curses_main(self, stdscr):
         curses.curs_set(0)
@@ -71,15 +65,16 @@ class Game:
             key = self.input_handler.get_key()
             if key is None:
                 continue
-            if key == 'QUIT':
+
+            if key == "QUIT":
                 self.running = False
                 break
-            if key.startswith('CMD:'):
+
+            if key.startswith("CMD:"):
                 cmd = key[4:]
                 result = cmdmod.handle_command(self, cmd)
                 if result:
                     self.push_message(result)
-                # tick after command (inspect/use may count as an action)
                 self.tick(action_type="command")
             else:
                 moved = move_player(self.map, self.player, key)
@@ -89,51 +84,64 @@ class Game:
                     self.push_message(f"Moved to {name}.")
                 else:
                     self.push_message("Cannot move there.")
-                # tick after movement
                 self.tick(action_type="move")
+
             self.renderer.render()
 
-    def run(self):
-        curses.wrapper(self._curses_main)
+    def run(self, stdscr=None):
+        try:
+            self.push_message("[debug] Game.run started")
+            while self.running:
+                if getattr(self, "renderer", None):
+                    try:
+                        self.renderer.render()
+                    except Exception as e:
+                        self.push_message(f"[debug] renderer.render error: {e}")
+
+                if getattr(self, "input_handler", None):
+                    try:
+                        self.input_handler.process_once()
+                    except Exception as e:
+                        self.push_message(f"[debug] input_handler error: {e}")
+                else:
+                    if stdscr:
+                        ch = stdscr.getch()
+                        if ch in (ord("q"), 27):
+                            self.push_message("[debug] quitting via key")
+                            self.running = False
+
+                try:
+                    self.tick()
+                except Exception as e:
+                    self.push_message(f"[debug] tick error: {e}")
+        except Exception as e:
+            self.push_message(f"[fatal] Game.run crashed: {e}")
+            raise
 
     def tick(self, action_type="move"):
-        """
-        Called after each player action (move, inspect, use, wait).
-        Handles linger counters and triggers events when thresholds are reached.
-        """
         sector = self.map.get_sector(self.player.x, self.player.y)
         if sector is None:
             return
 
-        # update linger counter: increment only if player stayed in same tile
         if getattr(self, "_last_pos", None) == (self.player.x, self.player.y):
             sector.linger_counter = getattr(sector, "linger_counter", 0) + 1
         else:
-            # reset linger on move to a new tile
             sector.linger_counter = 0
 
         self._last_pos = (self.player.x, self.player.y)
 
-        # check thresholds: sector.linger_thresholds may map threshold -> list of event ids
         thresholds = getattr(sector, "linger_thresholds", {}) or {}
         for th, event_list in list(thresholds.items()):
-            # event_list may be a list of event ids
             if sector.linger_counter >= int(th):
-                # trigger each event id
                 for event_id in (event_list if isinstance(event_list, list) else [event_list]):
                     event_def = self.event_defs.get(event_id)
                     if event_def:
                         self.event_engine.trigger(event_def, sector)
-                # reset or remove threshold so it doesn't retrigger immediately
-                # here we reset the counter for that sector
                 sector.linger_counter = 0
-    
 
     def handle_death(self, reason="You died."):
-        # push final messages and stop the game loop
         self.push_message(reason)
         self.push_message("You have died. Game over.")
-        # optionally render one last time so player sees the message
         if self.renderer:
             self.renderer.render()
         self.running = False
