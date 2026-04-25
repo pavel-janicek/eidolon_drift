@@ -9,23 +9,41 @@ class OutputRenderer:
         self.player = player
         self.game = game
         self.colors_available = False
-        # init colors will be called after curses is initialized (stdscr provided)
-        self._init_colors()
+        # init colors after curses is initialized
+        self._init_colors_and_report()
 
-    def _init_colors(self):
+    def _init_colors_and_report(self):
         try:
             if curses.has_colors():
                 curses.start_color()
-                # pair 1: title, 2: player, 3: objects, 4: warnings/messages, 5: sector type
-                curses.init_pair(1, curses.COLOR_CYAN, -1)
-                curses.init_pair(2, curses.COLOR_YELLOW, -1)
-                curses.init_pair(3, curses.COLOR_GREEN, -1)
-                curses.init_pair(4, curses.COLOR_RED, -1)
-                curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-                self.colors_available = True
+                # allow default terminal background
+                try:
+                    curses.use_default_colors()
+                except Exception:
+                    # some curses builds may not support use_default_colors
+                    pass
+                # init basic pairs (fg, bg=-1 default)
+                try:
+                    curses.init_pair(1, curses.COLOR_CYAN, -1)    # title
+                    curses.init_pair(2, curses.COLOR_YELLOW, -1)  # player
+                    curses.init_pair(3, curses.COLOR_GREEN, -1)   # objects
+                    curses.init_pair(4, curses.COLOR_RED, -1)     # warnings/messages
+                    curses.init_pair(5, curses.COLOR_MAGENTA, -1) # sector type
+                    self.colors_available = True
+                except curses.error:
+                    self.colors_available = False
+            else:
+                self.colors_available = False
         except Exception:
             self.colors_available = False
-        return self.colors_available
+
+        # push a short diagnostic message so you can see what curses detected
+        try:
+            cols = getattr(curses, "COLORS", None)
+            pairs = getattr(curses, "COLOR_PAIRS", None)
+            self.game.push_message(f"[debug] curses.has_colors={curses.has_colors()}, COLORS={cols}, COLOR_PAIRS={pairs}")
+        except Exception:
+            pass
 
     def render(self):
         self.stdscr.erase()
@@ -38,7 +56,6 @@ class OutputRenderer:
         except curses.error:
             pass
 
-        # draw minimap and sector info side by side
         self._draw_minimap(2, 0)
         self._draw_sector_info(2, 25, maxx - 26)
 
@@ -48,8 +65,6 @@ class OutputRenderer:
         except curses.error:
             pass
 
-        # draw messages (use available space)
-        msg_lines = min(12, maxy - (maxy - 14))  # safe fallback
         self._draw_messages(maxy - 14, 0, 12, maxx)
         self.stdscr.refresh()
 
@@ -82,7 +97,6 @@ class OutputRenderer:
                     attr = curses.color_pair(2) | curses.A_BOLD if self.colors_available else curses.A_BOLD
                 else:
                     ch = obj_marker if obj_marker else tile_char
-                    # color objects differently from tiles
                     if obj_marker:
                         attr = curses.color_pair(3) if self.colors_available else curses.A_NORMAL
                     else:
@@ -99,15 +113,12 @@ class OutputRenderer:
         if sector is None:
             lines = ["Unknown sector"]
         else:
-            # header
             header = f"Sector: {sector.name}"
             stype = f"Type: {sector.type}"
             lines = [header, stype, ""]
-            # description wrapped
             desc = sector.description or ""
             lines.extend(self._wrap_text(desc, width))
             lines.append("")
-            # objects
             if sector.objects:
                 lines.append("Objects here:")
                 for o in sector.objects:
@@ -123,10 +134,8 @@ class OutputRenderer:
 
         for i, l in enumerate(lines):
             try:
-                # color the sector type line
                 if i == 1 and self.colors_available:
                     self.stdscr.addstr(starty + i, startx, l[:width], curses.color_pair(5) | curses.A_BOLD)
-                # color object header and list
                 elif l.startswith("Objects here:") and self.colors_available:
                     self.stdscr.addstr(starty + i, startx, l[:width], curses.color_pair(3) | curses.A_UNDERLINE)
                 elif l.strip().startswith("-") and self.colors_available:
@@ -145,8 +154,7 @@ class OutputRenderer:
         msgs = self.game.messages[-max_lines:]
         for i, m in enumerate(msgs):
             try:
-                # highlight lines containing anomaly/warning keywords
-                if self.colors_available and ("ANOMALY" in m.upper() or "WARNING" in m.upper()):
+                if self.colors_available and ("ANOMALY" in m.upper() or "WARNING" in m.upper() or "[DEBUG]" in m.upper() or "[debug]" in m):
                     attr = curses.color_pair(4) | curses.A_BOLD
                 else:
                     attr = curses.A_NORMAL
