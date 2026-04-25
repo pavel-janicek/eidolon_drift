@@ -5,6 +5,7 @@ from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
 from eidolon.config import DEFAULT_MAP_WIDTH, DEFAULT_MAP_HEIGHT, SEED
+from eidolon.generation.log_loader import load_logs
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "objects"
 SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
@@ -12,12 +13,13 @@ SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "
 def _load_templates():
     templates = []
     by_id = {}
-    # DATA_DIR should point to project_root/data/objects
-    p = Path(__file__).resolve().parents[2] / "data" / "objects" / "objects.json"
+    p = DATA_DIR / "objects.json"
     if not p.exists():
         return templates, by_id
+
     with open(p, "r", encoding="utf-8") as f:
         templates = json.load(f)
+
     by_id = {t["id"]: t for t in templates}
     return templates, by_id
 
@@ -29,6 +31,7 @@ class MapGenerator:
         if seed is not None:
             random.seed(seed)
         self.templates, self.template_index = _load_templates()
+        self.log_pool = load_logs()
         # debug: push message via game? map generator nemá game, tak print to stderr or log
         import sys
         print(f"[mapgen] loaded {len(self.templates)} templates from {DATA_DIR / 'objects.json'}", file=sys.stderr)
@@ -149,24 +152,41 @@ class MapGenerator:
 
 
     def _instantiate_from_template(self, tpl, sector):
-        obj = dict(tpl)  # shallow copy
-        # remove keys not needed on instance
+        obj = dict(tpl)
         obj.pop("spawn_weight", None)
-        # keep id if you want, but don't expose internal 'kind'
         obj.pop("kind", None)
-        # normalize name
         if "name" in obj:
             obj["name"] = obj["name"].lower()
-        # logs: generate content
+
         if obj.get("type") == "log":
-            text = random.choice([
-                "We lost contact with the relay. Strange readings on the sensors.",
-                "Crew morale is low. Supplies are dwindling.",
-                "Engineering reports intermittent power surges in sector 3.",
-                "Unidentified impact on the hull. External cameras corrupted."
-            ])
-            content = obj.get("content_template", "{text}").format(text=text)
-            obj["content"] = content
-            obj["fragmented"] = random.random() < obj.get("fragmented_chance", 0.3)
+            selected_log = None
+            log_ids = tpl.get("log_pool")
+            if log_ids and isinstance(log_ids, list):
+                for lid in log_ids:
+                    for l in self.log_pool:
+                        if l.get("id") == lid:
+                            selected_log = l
+                            break
+                    if selected_log:
+                        break
+
+            if selected_log is None and self.log_pool:
+                selected_log = random.choice(self.log_pool)
+
+            if selected_log:
+                template_str = obj.get("content_template", "{text}")
+                content = template_str.format(
+                    text=selected_log.get("text", ""),
+                    title=selected_log.get("title", ""),
+                )
+                obj["content"] = content
+                if not obj.get("title"):
+                    obj["title"] = selected_log.get("title", obj.get("name", "log"))
+                obj["fragmented"] = random.random() < obj.get("fragmented_chance", 0.3)
+            else:
+                obj["content"] = obj.get("content_template", "{text}").format(text="An unreadable log entry.")
+                obj["fragmented"] = False
+
         return obj
+
 

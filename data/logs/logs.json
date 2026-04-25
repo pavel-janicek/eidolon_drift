@@ -1,0 +1,27 @@
+[
+  {
+    "id": "log_01",
+    "title": "Crew Log 9-0-1",
+    "text": "We lost contact with the relay. Strange readings on the sensors. Crew morale is low. Some systems are offline."
+  },
+  {
+    "id": "log_02",
+    "title": "Crew Log 3-2-7",
+    "text": "Engineering reports intermittent power surges in sector 3. We patched the conduit but the alarms keep returning."
+  },
+  {
+    "id": "log_03",
+    "title": "Personal Log - J. Morales",
+    "text": "I keep dreaming of static. The cameras show nothing but noise. I don't know if it's the ship or me."
+  },
+  {
+    "id": "log_04",
+    "title": "Bridge Log 1",
+    "text": "Unidentified impact on the hull. External cameras corrupted. We sealed the breach but pressure readings are unstable."
+  },
+  {
+    "id": "log_05",
+    "title": "Medical Note",
+    "text": "Supplies are dwindling. Medbay is rationing analgesics. If this continues, morale will drop further."
+  }
+]
