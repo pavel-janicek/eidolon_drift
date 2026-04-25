@@ -1,0 +1,115 @@
+[
+  {
+    "id": "desc_bridge",
+    "kind": "description",
+    "sector_type": "BRIDGE",
+    "text": "The command center of the Eidolon. Consoles flicker with emergency lights. The captain's chair sits empty."
+  },
+  {
+    "id": "desc_engineering",
+    "kind": "description",
+    "sector_type": "ENGINEERING",
+    "text": "A maze of conduits and machinery. Humming engines provide power to the ship. Warning lights blink sporadically."
+  },
+  {
+    "id": "desc_crew",
+    "kind": "description",
+    "sector_type": "CREW",
+    "text": "Crew quarters. Bunks line the walls, personal effects scattered about. The air smells of recycled oxygen."
+  },
+  {
+    "id": "desc_medbay",
+    "kind": "description",
+    "sector_type": "MEDBAY",
+    "text": "Medical bay. Examination tables and diagnostic equipment. Emergency supplies are stored in cabinets."
+  },
+  {
+    "id": "desc_cargo",
+    "kind": "description",
+    "sector_type": "CARGO",
+    "text": "Cargo hold. Crates and containers are secured to the floor. The space echoes with the hum of life support."
+  },
+  {
+    "id": "desc_airlock",
+    "kind": "description",
+    "sector_type": "AIRLOCK",
+    "text": "Airlock chamber. Heavy doors seal the entrance to space. Suits hang on racks, ready for EVA."
+  },
+  {
+    "id": "desc_empty",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "An empty corridor. Dim lights cast long shadows. The silence is broken only by distant machinery."
+  },
+
+  {
+    "id": "item_medkit_small",
+    "kind": "template",
+    "type": "item",
+    "name": "medkit",
+    "title": "Small Medkit",
+    "description": "A compact medkit. Restores 25 health when used.",
+    "on_use": {"action": "heal", "amount": 25},
+    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.15, "ENGINEERING": 0.05}
+  },
+
+  {
+    "id": "anomaly_residue",
+    "kind": "template",
+    "type": "anomaly",
+    "name": "pulsing-residue",
+    "title": "Pulsing Residue",
+    "description": "A faint pulsing residue. Prolonged exposure causes nausea and damage.",
+    "linger_damage": 2,
+    "linger_message": "You feel nauseous from the residue.",
+    "spawn_weight": {"CARGO": 0.12, "CREW": 0.06}
+  },
+
+  {
+    "id": "anomaly_signal",
+    "kind": "template",
+    "type": "anomaly",
+    "name": "strange-signal",
+    "title": "Strange Signal",
+    "description": "An anomalous electromagnetic signal. Prolonged exposure causes headaches.",
+    "linger_damage": 1,
+    "linger_message": "A piercing headache builds as the signal pulses.",
+    "spawn_weight": {"ENGINEERING": 0.08, "EMPTY": 0.03}
+  },
+
+  {
+    "id": "anomaly_spore",
+    "kind": "template",
+    "type": "anomaly",
+    "name": "spore-cloud",
+    "title": "Spore Cloud",
+    "description": "A drifting cloud of spores. Linger exposure damages health and sanity.",
+    "linger_damage": 3,
+    "linger_sanity": 5,
+    "linger_message": "The spores bite at your lungs and mind.",
+    "spawn_weight": {"MEDBAY": 0.04, "CREW": 0.05}
+  },
+
+  {
+    "id": "log_generic",
+    "kind": "template",
+    "type": "log",
+    "name": "crew-log",
+    "title": "Crew Log",
+    "description": "A personal log terminal. Use 'inspect' to read.",
+    "content_template": "Log entry: {text}",
+    "fragmented_chance": 0.35,
+    "spawn_weight": {"BRIDGE": 0.5, "CREW": 0.25, "ENGINEERING": 0.2}
+  },
+
+  {
+    "id": "item_ration",
+    "kind": "template",
+    "type": "item",
+    "name": "ration",
+    "title": "Emergency Ration",
+    "description": "A sealed packet of food and water. Restores a small amount of health over time.",
+    "on_use": {"action": "heal", "amount": 10},
+    "spawn_weight": {"CARGO": 0.4, "CREW": 0.1}
+  }
+]

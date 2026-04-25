@@ -1,10 +1,24 @@
 # eidolon/generation/map_generator.py
 import random
+import json
+from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
 from eidolon.config import DEFAULT_MAP_WIDTH, DEFAULT_MAP_HEIGHT, SEED
 
+DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "objects"
 SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
+
+def _load_templates():
+    templates = []
+    p = DATA_DIR / "objects.json"
+    if not p.exists():
+        return templates
+    with open(p, "r", encoding="utf-8") as f:
+        templates = json.load(f)
+    # index by id and also group templates by kind
+    by_id = {t["id"]: t for t in templates}
+    return templates, by_id
 
 class MapGenerator:
     def __init__(self, width=DEFAULT_MAP_WIDTH, height=DEFAULT_MAP_HEIGHT, seed=SEED):
@@ -12,47 +26,58 @@ class MapGenerator:
         self.height = height
         if seed is not None:
             random.seed(seed)
+        self.templates, self.template_index = _load_templates()
 
     def generate(self):
         grid = {}
-        # create empty grid first
+        # create empty grid
         for y in range(self.height):
             for x in range(self.width):
                 grid[(x, y)] = Sector(x, y, f"EMPTY-{x}-{y}", "EMPTY", "A narrow corridor. The lights are dim.")
-        # carve ship layout: front (bridge), mid (engineering), aft (cargo)
-        # Bridge region (top-left quadrant)
-        for y in range(0, max(2, self.height//4)):
-            for x in range(0, max(3, self.width//4)):
-                grid[(x, y)].type = "BRIDGE" if (x==0 and y==0) else "CREW"
-                grid[(x, y)].name = f"{grid[(x,y)].type}-{x}-{y}"
-                grid[(x, y)].description = self._make_description(grid[(x,y)].type)
-        # Engineering central band
-        mid_y = self.height//2
-        for x in range(self.width//4, 3*self.width//4):
+                # initialize linger fields
+                grid[(x, y)].linger_counter = 0
+                grid[(x, y)].linger_thresholds = {}
+
+        # carve ship layout
+        # Bridge region top-left
+        for y in range(0, max(2, self.height // 4)):
+            for x in range(0, max(3, self.width // 4)):
+                stype = "BRIDGE" if (x == 0 and y == 0) else "CREW"
+                grid[(x, y)].type = stype
+                grid[(x, y)].name = f"{stype}-{x}-{y}"
+
+        # engineering band
+        mid_y = self.height // 2
+        for x in range(self.width // 4, 3 * self.width // 4):
             grid[(x, mid_y)].type = "ENGINEERING"
             grid[(x, mid_y)].name = f"ENGINEERING-{x}-{mid_y}"
-            grid[(x, mid_y)].description = self._make_description("ENGINEERING")
-        # Cargo aft (bottom-right quadrant)
-        for y in range(self.height - max(3, self.height//4), self.height):
-            for x in range(self.width - max(4, self.width//4), self.width):
+
+        # cargo aft
+        for y in range(self.height - max(3, self.height // 4), self.height):
+            for x in range(self.width - max(4, self.width // 4), self.width):
                 grid[(x, y)].type = "CARGO"
                 grid[(x, y)].name = f"CARGO-{x}-{y}"
-                grid[(x, y)].description = self._make_description("CARGO")
-        # place airlocks along edges
-        grid[(self.width-1, self.height//2)].type = "AIRLOCK"
-        grid[(self.width-1, self.height//2)].name = "Outer Airlock"
-        grid[(0, self.height-1)].type = "AIRLOCK"
-        grid[(0, self.height-1)].name = "Rear Airlock"
-        # ensure a single Command Module / Bridge sector
+
+        # airlocks
+        grid[(self.width - 1, self.height // 2)].type = "AIRLOCK"
+        grid[(self.width - 1, self.height // 2)].name = "Outer Airlock"
+        grid[(0, self.height - 1)].type = "AIRLOCK"
+        grid[(0, self.height - 1)].name = "Rear Airlock"
+
+        # ensure command module
         bridge_pos = (0, 0)
         grid[bridge_pos].type = "BRIDGE"
         grid[bridge_pos].name = "Command Module"
-        grid[bridge_pos].description = self._make_description("BRIDGE")
-        # populate objects and environment
+
+        # apply descriptions from templates if present
+        desc_map = {t["sector_type"]: t["text"] for t in self.templates if t.get("kind") == "description"}
         for (x, y), sector in grid.items():
+            sector.description = desc_map.get(sector.type, sector.description)
             sector.environment = self._random_environment(sector.type)
-            self._populate_objects(sector, sector.type)
-        # ensure escape pod exists in a reachable sector near bridge (e.g., bridge adjacent)
+            # populate objects using templates
+            self._populate_objects(sector)
+
+        # place escape pod near bridge
         ex_x, ex_y = 1, 0
         if (ex_x, ex_y) in grid:
             grid[(ex_x, ex_y)].objects.append({
@@ -61,19 +86,8 @@ class MapGenerator:
                 "title": "Escape Pod",
                 "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch."
             })
-        return Map(self.width, self.height, grid)
 
-    def _make_description(self, sector_type):
-        descriptions = {
-            "BRIDGE": "The command center of the Eidolon. Consoles flicker with emergency lights. The captain's chair sits empty.",
-            "ENGINEERING": "A maze of conduits and machinery. Humming engines provide power to the ship. Warning lights blink sporadically.",
-            "CREW": "Crew quarters. Bunks line the walls, personal effects scattered about. The air smells of recycled oxygen.",
-            "MEDBAY": "Medical bay. Examination tables and diagnostic equipment. Emergency supplies are stored in cabinets.",
-            "CARGO": "Cargo hold. Crates and containers are secured to the floor. The space echoes with the hum of life support.",
-            "AIRLOCK": "Airlock chamber. Heavy doors seal the entrance to space. Suits hang on racks, ready for EVA.",
-            "EMPTY": "An empty corridor. Dim lights cast long shadows. The silence is broken only by distant machinery."
-        }
-        return descriptions.get(sector_type, "An unremarkable sector.")
+        return Map(self.width, self.height, grid)
 
     def _random_environment(self, sector_type):
         base_env = {
@@ -86,7 +100,6 @@ class MapGenerator:
             "EMPTY": "Bare walls and minimal lighting characterize this area."
         }
         env = base_env.get(sector_type, "The environment is sparse and functional.")
-        # Add random variation
         variations = [
             " The air is cool and still.",
             " A faint vibration runs through the floor.",
@@ -94,50 +107,57 @@ class MapGenerator:
             " The sound of distant alarms echoes faintly.",
             " Scattered debris litters the floor."
         ]
-        if random.random() < 0.3:  # 30% chance
+        if random.random() < 0.3:
             env += random.choice(variations)
         return env
 
-    def _populate_objects(self, sector, sector_type):
-        # Add objects based on sector type
-        if sector_type == "BRIDGE":
-            if random.random() < 0.5:
-                sector.objects.append({
-                    "type": "log",
-                    "name": "captains-log",
-                    "title": "Captain's Log Terminal",
-                    "description": "A terminal displaying the captain's final log entries."
-                })
-        elif sector_type == "ENGINEERING":
-            if random.random() < 0.4:
-                sector.objects.append({
-                    "type": "item",
-                    "name": "wrench",
-                    "title": "Engineering Wrench",
-                    "description": "A heavy wrench, useful for repairs."
-                })
-        elif sector_type == "MEDBAY":
-            if random.random() < 0.6:
-                sector.objects.append({
-                    "type": "item",
-                    "name": "medkit",
-                    "title": "Medical Kit",
-                    "description": "A kit containing bandages and painkillers."
-                })
-        elif sector_type == "CARGO":
-            if random.random() < 0.3:
-                sector.objects.append({
-                    "type": "item",
-                    "name": "ration",
-                    "title": "Emergency Ration",
-                    "description": "A sealed packet of food and water."
-                })
-        # Random anomalies in any sector
-        if random.random() < 0.1:  # 10% chance
-            sector.objects.append({
-                "type": "anomaly",
-                "name": "strange-signal",
-                "title": "Strange Signal",
-                "description": "An anomalous reading on your scanner."
-            })
+    def _choose_templates_for_sector(self, sector_type):
+        # return list of templates with spawn_weight for this sector_type
+        choices = []
+        for t in self.templates:
+            if t.get("kind") != "template":
+                continue
+            weights = t.get("spawn_weight", {})
+            w = weights.get(sector_type, 0)
+            if w > 0:
+                choices.append((t, w))
+        return choices
 
+    def _populate_objects(self, sector):
+        # deterministic-ish: iterate templates and roll by weight
+        choices = self._choose_templates_for_sector(sector.type)
+        for tpl, weight in choices:
+            if random.random() < weight:
+                # instantiate object from template
+                obj = self._instantiate_from_template(tpl, sector)
+                sector.objects.append(obj)
+                # if object has linger properties, set sector thresholds
+                if obj.get("type") == "anomaly" and obj.get("linger_damage"):
+                    # set a simple threshold: linger 2 turns triggers linger effect
+                    sector.linger_thresholds[2] = sector.linger_thresholds.get(2, []) + [obj.get("name")]
+                    # store linger metadata on object for event engine
+                    obj["_linger_threshold"] = 2
+
+    def _instantiate_from_template(self, tpl, sector):
+        # shallow copy and fill dynamic fields
+        obj = dict(tpl)  # copy template dict
+        # remove internal keys not needed on instance
+        obj.pop("id", None)
+        obj.pop("kind", None)
+        obj.pop("spawn_weight", None)
+        # normalize name lowercased
+        if "name" in obj:
+            obj["name"] = obj["name"].lower()
+        # for logs, generate content
+        if obj.get("type") == "log":
+            # simple seeded text
+            text = random.choice([
+                "We lost contact with the relay. Strange readings on the sensors.",
+                "Crew morale is low. Supplies are dwindling.",
+                "Engineering reports intermittent power surges in sector 3.",
+                "Unidentified impact on the hull. External cameras corrupted."
+            ])
+            content = obj.get("content_template", "{text}").format(text=text)
+            obj["content"] = content
+            obj["fragmented"] = random.random() < obj.get("fragmented_chance", 0.3)
+        return obj
