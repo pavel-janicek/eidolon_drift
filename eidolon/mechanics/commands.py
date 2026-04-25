@@ -71,6 +71,7 @@ def _cmd_help():
         "  inspect <object>   - inspect an object in the sector",
         "  decrypt <object>   - attempt to decrypt a data fragment",
         "  map                - show a textual snapshot of the ship map",
+        "  use <object>       - use an item from your inventory or the sector",
         "  status             - show your status (health, sanity, inventory)",
         "  help               - show this help",
         "  quit               - exit the session",
