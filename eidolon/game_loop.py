@@ -1,5 +1,6 @@
 # eidolon/game_loop.py
 import curses
+from tracemalloc import start
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
@@ -9,14 +10,19 @@ from eidolon.mechanics import commands as cmdmod
 
 class Game:
     def __init__(self, stdscr=None):
-        self.stdscr = stdscr
         self.map = MapGenerator().generate()
-        # start player near bridge (0,0) by default
-        self.player = Player(x=0, y=0)
-        self.input_handler = None
-        self.renderer = None
-        self.running = True
-        self.messages = []  # recent messages to show to player
+        # start player at ship boarding point (e.g., outer airlock)
+        # find an airlock sector to start near
+        start = None
+        for (x,y), s in self.map.grid.items():
+         if s.type == "AIRLOCK":
+            start = (x, y)
+         break
+        if start is None:
+            start = (0, 0)
+    self.player = Player(x=start[0], y=start[1])
+    self.push_message("Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod.")
+
 
     def push_message(self, text: str):
         # keep last 6 messages

@@ -54,6 +54,11 @@ def handle_command(game, raw_cmd: str) -> str:
             return "No sector."
         # show raw objects for debugging
         return repr(sector.objects)
+    if verb == "use":
+        if not args:
+            return "Usage: use <object>"
+        target = " ".join(args)
+        return _cmd_use(game, target)
 
 
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
@@ -253,3 +258,25 @@ def _cmd_status(game):
         f"Position: ({p.x}, {p.y})",
     ]
     return "\n".join(lines)
+
+def _cmd_use(game, target):
+    target_norm = _normalize(target)
+    sector = game.map.get_sector(game.player.x, game.player.y)
+    if sector is None:
+        return "Nothing to use here."
+    # find object by name/title
+    for o in sector.objects:
+        if isinstance(o, dict):
+            name = _normalize(o.get("name",""))
+            title = _normalize(o.get("title",""))
+            if target_norm == name or target_norm == title or target_norm in name or target_norm in title:
+                # escape pod logic
+                if o.get("name") == "escape-pod":
+                    # victory
+                    game.push_message("You interface with the escape pod. Launch sequence initiated...")
+                    game.push_message("Escape pod launched. You survived Eidolon.")
+                    game.running = False
+                    return "Victory: escape pod launched."
+                # other useable items can be handled here
+                return f"You use the {o.get('title', o.get('name'))}. Nothing notable happens."
+    return f"No usable object named '{target}' found here."
