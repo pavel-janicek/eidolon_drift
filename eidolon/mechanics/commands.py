@@ -61,8 +61,14 @@ def handle_command(game, raw_cmd: str) -> str:
         return _cmd_use(game, target)
     if verb == "theme":
         name = args[0] if args else "dark"
-        ok = self.renderer.apply_theme(name)
-        return f"Theme set to {name}" if ok else f"Unknown theme '{name}'. Available: {', '.join(self.renderer.THEMES.keys())}"
+        if not hasattr(game, "renderer") or game.renderer is None:
+            return "No renderer available to apply a theme."
+        ok = game.renderer.apply_theme(name)
+        return f"Theme set to {name}" if ok else f"Unknown theme '{name}'. Available: {', '.join(game.renderer.THEMES.keys())}"
+    # v eidolon/mechanics/commands.py
+    if verb == "dump-messages":
+        return "\n".join(game.messages[-50:])
+
 
 
 

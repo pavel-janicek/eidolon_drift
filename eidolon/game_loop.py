@@ -1,5 +1,6 @@
 # eidolon/game_loop.py
 import curses
+from pydoc import text
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
@@ -30,6 +31,7 @@ class Game:
         self.renderer = None
         self.running = True
         self.messages = []
+        self.push_message("[debug] game initialized, messages buffer created")
         # after self.messages initialization
         # load event definitions and create engine
         self.event_defs = load_event_defs()
@@ -41,13 +43,20 @@ class Game:
         self.push_message("Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod.")
         self.push_message("Type 'help' for commands. Use WASD to move.")
 
-    def push_message(self, text: str):
-        if not text:
-            return
-        for line in text.splitlines():
-            self.messages.append(line)
-        # keep last 20 lines
-        self.messages = self.messages[-20:]
+    def push_message(self, text):
+        if not hasattr(self, "messages"):
+            self.messages = []
+        self.messages.append(str(text))
+    # keep last 200 messages
+        if len(self.messages) > 200:
+            self.messages = self.messages[-200:]
+    # optional: also write to disk for offline debugging
+    try:
+        with open("eidolon_messages.log", "a", encoding="utf-8") as f:
+            f.write(str(text).replace("\n", " ") + "\n")
+    except Exception:
+        pass
+
 
     def _curses_main(self, stdscr):
         curses.curs_set(0)
