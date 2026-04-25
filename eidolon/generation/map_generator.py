@@ -11,14 +11,16 @@ SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "
 
 def _load_templates():
     templates = []
-    p = DATA_DIR / "objects.json"
+    by_id = {}
+    # DATA_DIR should point to project_root/data/objects
+    p = Path(__file__).resolve().parents[2] / "data" / "objects" / "objects.json"
     if not p.exists():
-        return templates
+        return templates, by_id
     with open(p, "r", encoding="utf-8") as f:
         templates = json.load(f)
-    # index by id and also group templates by kind
     by_id = {t["id"]: t for t in templates}
     return templates, by_id
+
 
 class MapGenerator:
     def __init__(self, width=DEFAULT_MAP_WIDTH, height=DEFAULT_MAP_HEIGHT, seed=SEED):
@@ -27,6 +29,9 @@ class MapGenerator:
         if seed is not None:
             random.seed(seed)
         self.templates, self.template_index = _load_templates()
+        # debug: push message via game? map generator nemá game, tak print to stderr or log
+        import sys
+        print(f"[mapgen] loaded {len(self.templates)} templates from {DATA_DIR / 'objects.json'}", file=sys.stderr)
 
     def generate(self):
         grid = {}
@@ -124,33 +129,36 @@ class MapGenerator:
         return choices
 
     def _populate_objects(self, sector):
-        # deterministic-ish: iterate templates and roll by weight
         choices = self._choose_templates_for_sector(sector.type)
         for tpl, weight in choices:
             if random.random() < weight:
-                # instantiate object from template
                 obj = self._instantiate_from_template(tpl, sector)
                 sector.objects.append(obj)
-                # if object has linger properties, set sector thresholds
-                if obj.get("type") == "anomaly" and obj.get("linger_damage"):
-                    # set a simple threshold: linger 2 turns triggers linger effect
-                    sector.linger_thresholds[2] = sector.linger_thresholds.get(2, []) + [obj.get("name")]
-                    # store linger metadata on object for event engine
-                    obj["_linger_threshold"] = 2
+                # if template defines linger behavior, register event id(s)
+                if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
+                    # prefer explicit linger_event field, else use template id
+                    event_id = tpl.get("linger_event", tpl.get("id"))
+                    if event_id:
+                        # use threshold 2 by default (or tpl can define linger_threshold)
+                        th = tpl.get("linger_threshold", 2)
+                        # ensure list
+                        sector.linger_thresholds[th] = sector.linger_thresholds.get(th, []) + [event_id]
+                        # store metadata on object for reference
+                        obj["_linger_threshold"] = th
+                        obj["_linger_event"] = event_id
+
 
     def _instantiate_from_template(self, tpl, sector):
-        # shallow copy and fill dynamic fields
-        obj = dict(tpl)  # copy template dict
-        # remove internal keys not needed on instance
-        obj.pop("id", None)
-        obj.pop("kind", None)
+        obj = dict(tpl)  # shallow copy
+        # remove keys not needed on instance
         obj.pop("spawn_weight", None)
-        # normalize name lowercased
+        # keep id if you want, but don't expose internal 'kind'
+        obj.pop("kind", None)
+        # normalize name
         if "name" in obj:
             obj["name"] = obj["name"].lower()
-        # for logs, generate content
+        # logs: generate content
         if obj.get("type") == "log":
-            # simple seeded text
             text = random.choice([
                 "We lost contact with the relay. Strange readings on the sensors.",
                 "Crew morale is low. Supplies are dwindling.",
@@ -161,3 +169,4 @@ class MapGenerator:
             obj["content"] = content
             obj["fragmented"] = random.random() < obj.get("fragmented_chance", 0.3)
         return obj
+

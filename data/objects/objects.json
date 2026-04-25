@@ -61,6 +61,7 @@
     "title": "Pulsing Residue",
     "description": "A faint pulsing residue. Prolonged exposure causes nausea and damage.",
     "linger_damage": 2,
+    "linger_event": "residue_nausea",
     "linger_message": "You feel nauseous from the residue.",
     "spawn_weight": {"CARGO": 0.12, "CREW": 0.06}
   },
@@ -73,6 +74,7 @@
     "title": "Strange Signal",
     "description": "An anomalous electromagnetic signal. Prolonged exposure causes headaches.",
     "linger_damage": 1,
+    "linger_event": "signal_headache",
     "linger_message": "A piercing headache builds as the signal pulses.",
     "spawn_weight": {"ENGINEERING": 0.08, "EMPTY": 0.03}
   },
@@ -86,6 +88,7 @@
     "description": "A drifting cloud of spores. Linger exposure damages health and sanity.",
     "linger_damage": 3,
     "linger_sanity": 5,
+    "linger_event": "spore_exposure",
     "linger_message": "The spores bite at your lungs and mind.",
     "spawn_weight": {"MEDBAY": 0.04, "CREW": 0.05}
   },
