@@ -1,6 +1,6 @@
 # eidolon/config.py
-DEFAULT_MAP_WIDTH = 20
-DEFAULT_MAP_HEIGHT = 12
+DEFAULT_MAP_WIDTH = 200
+DEFAULT_MAP_HEIGHT = 120
 SEED = None  # set to int for reproducible runs
 MIN_MAP_WIDTH = 10
 MIN_MAP_HEIGHT = 5
