@@ -482,7 +482,7 @@ class OutputRenderer:
                 try:
                     self.desc_win.addstr(y, x, f"- {title}"[:inner_w])
                 except Exception:
-                pass
+                    pass
                 y += 1
 
         # ambientní blok (zobrazí se krátce)
