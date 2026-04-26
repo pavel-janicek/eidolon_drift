@@ -111,6 +111,19 @@
   },
 
   {
+    "id": "log_medical",
+    "kind": "template",
+    "type": "medical-log",
+    "name": "log-medical",
+    "title": "Log - Medical",
+    "description": "A medical log terminal. Use 'inspect' to read.",
+    "content_template": "Medical - {text}",
+    "fragmented_chance": 0.25,
+    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.2, "ENGINEERING": 0.1},
+    "density_modifier": 0.8
+  },
+
+  {
     "id": "item_ration",
     "kind": "template",
     "type": "item",

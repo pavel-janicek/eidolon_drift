@@ -81,6 +81,7 @@ class MapGenerator:
         self.log_pool = load_logs()
         data_path = (self.data_dir / "objects.json") if self.data_dir else Path("data/objects/objects.json")
         print(f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
+        print(f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json", file=sys.stderr)
 
         self.sector_types = self.config.get("sector_types", ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"])
 
