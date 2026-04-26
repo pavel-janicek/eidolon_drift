@@ -34,6 +34,18 @@ class OutputRenderer:
         self._init_colors()
         try:
             self.apply_theme(self.theme)
+            # object colors
+            self.obj_color_map = {
+            "item": 30,
+            }
+
+            # sector colors (only if no object)
+            self.sector_color_map = {
+            "MEDBAY": 31,
+            "BRIDGE": 32,
+            "ENGINEERING": 33,
+            "AIRLOCK": 34,
+            }
         except Exception:
             pass
 
@@ -57,6 +69,11 @@ class OutputRenderer:
                 curses.init_pair(11, curses.COLOR_YELLOW, -1)
                 # pair 12 = red on default background
                 curses.init_pair(12, curses.COLOR_RED, -1)
+                curses.init_pair(30, 250, -1)   # items (light gray)
+                curses.init_pair(31, 118, -1)   # medbay (greenish)
+                curses.init_pair(32, 160, -1)   # bridge (red)
+                curses.init_pair(33, 141, -1)   # engineering (light lavender)
+                curses.init_pair(34, 189, -1)   # airlock (silver-blue)
                 self.colors_available = True
         except Exception:
             self.colors_available = False
@@ -375,9 +392,32 @@ class OutputRenderer:
                         attr = curses.A_BOLD | (curses.color_pair(
                             2) if self.colors_available else 0)
                     else:
-                        ch = obj_marker if obj_marker else ch
-                        attr = curses.color_pair(3) if (
-                            self.colors_available and obj_marker) else curses.A_NORMAL
+                        # object has priority
+                        if obj_marker and self.colors_available:
+                            try:
+                                first = sector.objects[0]
+                                otype = first.get("type")
+                                pair = self.obj_color_map.get(otype)
+                                if pair:
+                                    attr = curses.color_pair(pair) | curses.A_BOLD
+                                else:
+                                    attr = curses.A_NORMAL
+                            except Exception:
+                                attr = curses.A_NORMAL
+                            ch = obj_marker
+
+                    # sector color (only if no object)
+                        elif self.colors_available:
+                            stype = sector.type
+                            pair = self.sector_color_map.get(stype)
+                            if pair:
+                                attr = curses.color_pair(pair)
+                            else:
+                                attr = curses.A_NORMAL
+
+                        else:
+                            attr = curses.A_NORMAL
+
                     try:
                         win.addstr(1 + y, 1 + x, str(ch), attr)
                     except Exception as e:
@@ -480,7 +520,12 @@ class OutputRenderer:
                     break
                 title = obj.get("title", obj.get("name", "object")) if isinstance(obj, dict) else str(obj)
                 try:
-                    self.desc_win.addstr(y, x, f"- {title}"[:inner_w])
+                    style = curses.A_NORMAL
+                    if self.colors_available and isinstance(obj, dict):
+                        if obj.get("type") == "item":
+                            style = curses.color_pair(30)
+
+                    self.desc_win.addstr(y, x, f"- {title}"[:inner_w], style)
                 except Exception:
                     pass
                 y += 1
