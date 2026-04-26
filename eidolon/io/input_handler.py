@@ -123,10 +123,10 @@ class InputHandler:
             elif token == 'RIGHT':
                 dx = 1
 
-            if self.player.sanity < 30:
+            if self.game.player.sanity < 30:
                 if random.random() < 0.1:
                     dx, dy = random.choice([(1,0),(-1,0),(0,1),(0,-1)])
-                    self.push_message("You stumble...")
+                    self.game.push_message("You stumble...")
     
 
             # prefer game.move_player(dx,dy) if existuje

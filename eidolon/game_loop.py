@@ -276,6 +276,24 @@ class Game:
             if random.random() < 0.05:  # 5% chance per tick
                 self.player.lose_sanity(1)
         
+        # --- SANITY RECOVERY: MEDBAY ---
+        if not hasattr(self, "_sanity_medbay_counter"):
+                self._sanity_medbay_counter = 0
+
+        sector = self.map.get_sector(self.player.x, self.player.y)
+
+        if sector and sector.type == "MEDBAY":
+            # medbay slowly restores sanity
+        
+            self._sanity_medbay_counter += 1
+
+        # restore 1 sanity every 5 ticks
+        if self._sanity_medbay_counter >= 5:
+            self.player.gain_sanity(1)
+            self._sanity_medbay_counter = 0
+            self.push_message("You feel calmer here.")
+        
+        
 
     def handle_command(self, cmd):
         try:
