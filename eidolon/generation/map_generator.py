@@ -5,9 +5,8 @@ import sys
 from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
-from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT
+from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, SEED, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE
 from eidolon.generation.log_loader import load_logs
-from eidolon.config import DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE
 
 SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
 
@@ -52,7 +51,7 @@ class MapGenerator:
     - používá vlastní RNG instance (seed=None => náhodný).
     - base_density a min_distance laditelné.
     """
-    def __init__(self, width=None, height=None, seed=None, base_density=0.06, min_distance=3):
+    def __init__(self, width=None, height=None, seed=None, base_density=None, min_distance=None):
         self.width = int(width) if width is not None else int(MIN_MAP_WIDTH)
         self.height = int(height) if height is not None else int(MIN_MAP_HEIGHT)
         if self.width < MIN_MAP_WIDTH:
@@ -60,14 +59,19 @@ class MapGenerator:
         if self.height < MIN_MAP_HEIGHT:
             self.height = MIN_MAP_HEIGHT
 
-        # dedicated RNG
-        if seed is None:
-            self.rng = random.Random()
+        # determine seed: explicit > config.SEED > system entropy
+        use_seed = seed if seed is not None else SEED
+        if use_seed is None:
+            # system entropy seed for true randomness
+            sys_seed = random.SystemRandom().randint(0, 2**30)
+            self.rng = random.Random(sys_seed)
+            print(f"[mapgen][debug] using system-random seed={sys_seed}", file=sys.stderr)
         else:
-            self.rng = random.Random(seed)
+            self.rng = random.Random(int(use_seed))
+            print(f"[mapgen][debug] using seed={int(use_seed)}", file=sys.stderr)
 
-        self.base_density = float(base_density) if base_density is not None else DEFAULT_BASE_DENSITY
-        self.min_distance = int(min_distance) if min_distance is not None else DEFAULT_MIN_DISTANCE
+        self.base_density = float(base_density) if base_density is not None else float(DEFAULT_BASE_DENSITY)
+        self.min_distance = int(min_distance) if min_distance is not None else int(DEFAULT_MIN_DISTANCE)
 
         self.data_dir = _find_data_dir()
         self.templates, self.template_index = _load_templates(self.data_dir)
@@ -78,6 +82,62 @@ class MapGenerator:
         # current_grid bude nastaven v generate() pro kontrolu okolí při spawnování
         self.current_grid = None
 
+    # --- helper methods for region placement ---------------------------------
+    def _rects_overlap(self, a, b, gap=0):
+        ax0, ay0, ax1, ay1 = a
+        bx0, by0, bx1, by1 = b
+        return not (ax1 + gap < bx0 or bx1 + gap < ax0 or ay1 + gap < by0 or by1 + gap < ay0)
+
+    def _place_region(self, map_w, map_h, width, height, prefer_area=None, existing=None, attempts=80, min_gap=None):
+        """
+        Try to place a rectangle (width x height) somewhere on the map so it doesn't
+        overlap existing rectangles (with min_gap). prefer_area is (x0,y0,x1,y1) to bias placement.
+        Returns (x0,y0,x1,y1) or None.
+        """
+        if min_gap is None:
+            min_gap = max(1, getattr(self, "min_distance", 3))
+        existing = existing or []
+
+        for _ in range(attempts):
+            if prefer_area:
+                px0, py0, px1, py1 = prefer_area
+                # clamp prefer_area to map bounds
+                px0 = max(0, px0)
+                py0 = max(0, py0)
+                px1 = min(map_w - 1, px1)
+                py1 = min(map_h - 1, py1)
+                if px1 - px0 + 1 < width or py1 - py0 + 1 < height:
+                    # fallback to full map
+                    rx = self.rng.randint(0, max(0, map_w - width))
+                    ry = self.rng.randint(0, max(0, map_h - height))
+                else:
+                    rx = self.rng.randint(px0, max(px0, min(px1 - width + 1, map_w - width)))
+                    ry = self.rng.randint(py0, max(py0, min(py1 - height + 1, map_h - height)))
+            else:
+                rx = self.rng.randint(0, max(0, map_w - width))
+                ry = self.rng.randint(0, max(0, map_h - height))
+            rect = (rx, ry, rx + width - 1, ry + height - 1)
+            ok = True
+            for ex in existing:
+                if self._rects_overlap(rect, ex, gap=min_gap):
+                    ok = False
+                    break
+            if ok:
+                return rect
+        return None
+
+    def _fill_region(self, grid, x0, y0, x1, y1, stype, name_prefix=None, density=0.6):
+        """
+        Fill a rectangular region with given density (0..1). Uses self.rng.
+        """
+        for yy in range(max(0, y0), min(self.height, y1 + 1)):
+            for xx in range(max(0, x0), min(self.width, x1 + 1)):
+                if self.rng.random() <= density:
+                    sector = grid[(xx, yy)]
+                    sector.type = stype
+                    sector.name = f"{(name_prefix or stype)}-{xx}-{yy}"
+
+    # --- main generation -----------------------------------------------------
     def generate(self, width=None, height=None):
         w = int(width) if width is not None else int(self.width)
         h = int(height) if height is not None else int(self.height)
@@ -86,6 +146,10 @@ class MapGenerator:
             w = MIN_MAP_WIDTH
         if h < MIN_MAP_HEIGHT:
             h = MIN_MAP_HEIGHT
+
+        # ensure self.width/self.height reflect actual generation size for helpers
+        self.width = w
+        self.height = h
 
         grid = {}
         for y in range(h):
@@ -97,57 +161,77 @@ class MapGenerator:
                     s.objects = []
                 grid[(x, y)] = s
 
-        def fill_region(x0, y0, x1, y1, stype, name_prefix=None, density=1.0):
-            for yy in range(max(0, y0), min(h, y1 + 1)):
-                for xx in range(max(0, x0), min(w, x1 + 1)):
-                    if self.rng.random() <= density:
-                        sector = grid[(xx, yy)]
-                        sector.type = stype
-                        sector.name = f"{name_prefix or stype}-{xx}-{yy}"
+        # region placement with spacing
+        min_gap = max(2, getattr(self, "min_distance", 3))
+        placed_rects = []
 
-        # bridge + crew cluster
-        bridge_w = self.rng.randint(2, max(3, w // 5))
-        bridge_h = self.rng.randint(2, max(2, h // 5))
-        fill_region(0, 0, bridge_w - 1, bridge_h - 1, "BRIDGE", "Bridge")
+        # Bridge: small region in top-left quadrant
+        bridge_w = self.rng.randint(2, max(2, w // 6))
+        bridge_h = self.rng.randint(2, max(2, h // 6))
+        bridge_rect = self._place_region(w, h, bridge_w, bridge_h, prefer_area=(0, 0, max(0, w // 3), max(0, h // 3)), existing=placed_rects, attempts=120, min_gap=min_gap)
+        if bridge_rect:
+            bx0, by0, bx1, by1 = bridge_rect
+            self._fill_region(grid, bx0, by0, bx1, by1, "BRIDGE", "Bridge", density=0.9)
+            placed_rects.append(bridge_rect)
+            # carve a small adjacent crew area if space allows
+            creww = min(w, bridge_w + self.rng.randint(1, max(1, w // 8)))
+            crewh = min(h, bridge_h + self.rng.randint(1, max(1, h // 8)))
+            crect = (max(0, bx1 + 1), by0, min(w - 1, bx1 + creww), min(h - 1, by0 + crewh))
+            if not any(self._rects_overlap(crect, ex, gap=min_gap) for ex in placed_rects):
+                self._fill_region(grid, crect[0], crect[1], crect[2], crect[3], "CREW", "Crew", density=0.6)
+                placed_rects.append(crect)
 
-        crew_w = max(2, min(w // 4, w - bridge_w - 1))
-        crew_h = max(2, min(h // 4, h - bridge_h - 1))
-        fill_region(bridge_w, 0, bridge_w + crew_w - 1, crew_h - 1, "CREW", "Crew", density=0.75)
-        fill_region(0, bridge_h, crew_w - 1, bridge_h + crew_h - 1, "CREW", "Crew", density=0.75)
+        # Engineering band: try to place across middle with jitter and avoid overlaps
+        eng_h = max(1, min(3, max(1, h // 10)))
+        eng_w = max(3, w - 4)
+        eng_y = max(1, min(h - eng_h - 1, h // 2 + self.rng.randint(-max(1, h // 8), max(1, h // 8))))
+        eng_rect = (0, eng_y, eng_w - 1, eng_y + eng_h - 1)
+        # shift if overlapping
+        for i in range(8):
+            if not any(self._rects_overlap(eng_rect, ex, gap=min_gap) for ex in placed_rects):
+                break
+            delta = self.rng.choice([-1, 1]) * (i + 1)
+            new_y = max(1, min(h - eng_h - 1, eng_y + delta))
+            eng_rect = (0, new_y, eng_w - 1, new_y + eng_h - 1)
+        self._fill_region(grid, eng_rect[0], eng_rect[1], eng_rect[2], eng_rect[3], "ENGINEERING", "ENGINEERING", density=0.85)
+        placed_rects.append(eng_rect)
 
-        # medbay region somewhere near the upper half, not overlapping the bridge cluster
-        medbay_w = min(max(2, w // 6), max(2, w // 4))
-        medbay_h = min(max(2, h // 6), max(2, h // 4))
-        medbay_x = self.rng.randint(bridge_w, max(bridge_w, w - medbay_w - 2)) if w - medbay_w - bridge_w > 1 else bridge_w
-        medbay_y = self.rng.randint(1, max(1, h // 2 - medbay_h)) if h // 2 - medbay_h > 1 else 1
-        fill_region(medbay_x, medbay_y, medbay_x + medbay_w - 1, medbay_y + medbay_h - 1, "MEDBAY", "MEDBAY")
+        # Medbay: small region in upper half, avoid overlaps
+        medbay_w = max(2, min(w // 6, 6))
+        medbay_h = max(2, min(h // 6, 6))
+        medbay_rect = self._place_region(w, h, medbay_w, medbay_h, prefer_area=(0, 0, w // 2, max(1, h // 2)), existing=placed_rects, attempts=80, min_gap=min_gap)
+        if medbay_rect:
+            self._fill_region(grid, medbay_rect[0], medbay_rect[1], medbay_rect[2], medbay_rect[3], "MEDBAY", "MEDBAY", density=0.7)
+            placed_rects.append(medbay_rect)
 
-        # engineering band through the middle with small random offset
-        eng_y = min(max(1, h // 2 + self.rng.randint(-1, 1)), h - 2)
-        eng_x0 = self.rng.randint(0, max(0, w // 5))
-        eng_x1 = self.rng.randint(min(w - 1, 3 * w // 4), w - 1)
-        fill_region(eng_x0, eng_y, eng_x1, min(h - 1, eng_y + self.rng.randint(0, 1)), "ENGINEERING", "ENGINEERING", density=0.95)
+        # Cargo: place in lower-right quadrant with spacing
+        cargo_w = max(3, min(w // 4, 8))
+        cargo_h = max(3, min(h // 4, 8))
+        cargo_rect = self._place_region(w, h, cargo_w, cargo_h, prefer_area=(max(0, w // 2), max(0, h // 2), w - 1, h - 1), existing=placed_rects, attempts=120, min_gap=min_gap)
+        if cargo_rect:
+            self._fill_region(grid, cargo_rect[0], cargo_rect[1], cargo_rect[2], cargo_rect[3], "CARGO", "CARGO", density=0.6)
+            placed_rects.append(cargo_rect)
 
-        # cargo cluster with holes to reduce density
-        cargo_w = max(4, min(w // 3, w - 2))
-        cargo_h = max(3, min(h // 3, h - 2))
-        cargo_x0 = max(0, w - cargo_w - self.rng.randint(0, max(0, (w - cargo_w) // 2)))
-        cargo_y0 = max(h // 2, h - cargo_h - self.rng.randint(0, max(0, (h - cargo_h) // 2)))
-        fill_region(cargo_x0, cargo_y0, cargo_x0 + cargo_w - 1, cargo_y0 + cargo_h - 1, "CARGO", "CARGO", density=0.7)
-
-        airlocks = []
+        # Airlocks: pick two distinct edge positions, ensure gap from other regions
+        air_candidates = []
         if w > 1:
-            airlocks.append((w - 1, self.rng.randint(0, h - 1)))
-            airlocks.append((0, self.rng.randint(0, h - 1)))
+            air_candidates.append((w - 1, self.rng.randint(0, h - 1)))
+            air_candidates.append((0, self.rng.randint(0, h - 1)))
         if h > 1:
-            airlocks.append((self.rng.randint(0, w - 1), 0))
-            airlocks.append((self.rng.randint(0, w - 1), h - 1))
-        self.rng.shuffle(airlocks)
+            air_candidates.append((self.rng.randint(0, w - 1), 0))
+            air_candidates.append((self.rng.randint(0, w - 1), h - 1))
+        self.rng.shuffle(air_candidates)
         seen = set()
-        for x, y in airlocks:
+        for x, y in air_candidates:
             if len(seen) >= 2:
                 break
-            if (x, y) in seen:
+            # ensure not inside any placed_rects (with gap)
+            inside = False
+            for ex in placed_rects:
+                if self._rects_overlap((x, y, x, y), ex, gap=min_gap):
+                    inside = True
+                    break
+            if inside:
                 continue
             seen.add((x, y))
             try:
@@ -157,10 +241,10 @@ class MapGenerator:
             except Exception:
                 pass
 
-        bridge_pos = (0, 0)
-        if bridge_pos in grid:
-            grid[bridge_pos].type = "BRIDGE"
-            grid[bridge_pos].name = "Command Module"
+        # fallback: ensure at least one bridge tile exists
+        if not any(grid[pos].type == "BRIDGE" for pos in grid):
+            grid[(0, 0)].type = "BRIDGE"
+            grid[(0, 0)].name = "Command Module"
 
         # descriptions map
         desc_map = {}
@@ -172,8 +256,11 @@ class MapGenerator:
         # make grid available for placement checks
         self.current_grid = grid
 
-        # populate sectors
-        for (x, y), sector in list(grid.items()):
+        # populate sectors in random order to avoid bias
+        keys = list(grid.keys())
+        self.rng.shuffle(keys)
+        for (x, y) in keys:
+            sector = grid[(x, y)]
             sector.description = desc_map.get(sector.type, getattr(sector, "description", ""))
             sector.environment = self._random_environment(sector.type)
             if not hasattr(sector, "objects") or sector.objects is None:
@@ -183,8 +270,20 @@ class MapGenerator:
             except Exception as e:
                 print(f"[mapgen] populate error at {x},{y}: {e}", file=sys.stderr)
 
-        # place escape pod near bridge
-        ex_x, ex_y = 1, 0
+        # place escape pod near bridge (try to find a nearby empty crew tile)
+        ex_x, ex_y = None, None
+        # prefer tile adjacent to bridge_rect if available
+        if 'bridge_rect' in locals() and bridge_rect:
+            bx0, by0, bx1, by1 = bridge_rect
+            # search right of bridge for a crew tile
+            for dx in range(1, 4):
+                candidate = (min(w - 1, bx1 + dx), by0)
+                if candidate in grid:
+                    ex_x, ex_y = candidate
+                    break
+        # fallback to (1,0)
+        if ex_x is None:
+            ex_x, ex_y = (1, 0)
         if (ex_x, ex_y) in grid:
             sec = grid[(ex_x, ex_y)]
             if not hasattr(sec, "objects") or sec.objects is None:
@@ -195,6 +294,17 @@ class MapGenerator:
                 "title": "Escape Pod",
                 "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch."
             })
+
+        # debug summary of placed objects
+        total = 0
+        per_type = {}
+        for sec in grid.values():
+            n = len(getattr(sec, "objects", []) or [])
+            total += n
+            for o in getattr(sec, "objects", []) or []:
+                t = o.get("type", "unknown") if isinstance(o, dict) else "unknown"
+                per_type[t] = per_type.get(t, 0) + 1
+        print(f"[mapgen][debug] placed total objects={total}, by_type={per_type}", file=sys.stderr)
 
         # cleanup
         self.current_grid = None
@@ -249,7 +359,13 @@ class MapGenerator:
 
         for tpl, weight in choices:
             try:
-                p = self.base_density * float(weight) * local_noise
+                density_mod = 1.0
+                try:
+                    density_mod = float(tpl.get("density_modifier", 1.0))
+                except Exception:
+                    density_mod = 1.0
+
+                p = self.base_density * float(weight) * density_mod * local_noise
                 p = max(0.0, min(0.9, p))
                 if self.rng.random() < p:
                     if not self._can_place_in_sector(sector):
