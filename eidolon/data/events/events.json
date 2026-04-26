@@ -24,5 +24,15 @@
     "description": "A small unstable anomaly.",
     "message": "A micro anomaly coalesces nearby.",
     "linger_damage": 1
+  },
+  {
+    "id": "spore_exposure",
+    "type": "linger_damage_sanity",
+    "damage": 3,
+    "sanity_loss": 5,
+    "message": "The spores bite at your lungs and mind. -{damage} HP, -{sanity} sanity.",
+    "death_message": "The spores overwhelm you. You collapse and never wake up.",
+    "repeatable": true,
+    "cooldown": 5
   }
 ]
