@@ -1,5 +1,8 @@
 # eidolon/game_loop.py
 import curses
+from importlib.resources import path
+from pathlib import Path
+import random
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
@@ -11,32 +14,90 @@ from eidolon.mechanics.event_loader import load_event_defs
 
 
 class Game:
-    def __init__(self, stdscr=None):
+    def __init__(self, stdscr=None, map_width=None, map_height=None, map_seed=None, base_density=None, min_distance=None):
+        """
+        Initialize game state.
+        Optional args:
+          - stdscr: curses screen (or None)
+          - map_width/map_height: override generator size
+          - map_seed: optional seed passed to MapGenerator (None => config.SEED or system randomness)
+          - base_density/min_distance: optional generator tuning
+        """
         self.stdscr = stdscr
-        self.map = MapGenerator().generate()
 
+        # --- create generator and map (keep generator reference) ---
+        # create MapGenerator with optional tuning; MapGenerator handles seed fallback
+        gen = MapGenerator(width=map_width, height=map_height, seed=map_seed,
+                           base_density=base_density, min_distance=min_distance)
+        game_map = gen.generate(width=map_width, height=map_height)
+        # keep generator reference on the map for later use (spawning, instantiation)
+        setattr(game_map, "generator", gen)
+        self.map = game_map
+
+        # reuse generator RNG for game-level randomness (consistent seeding)
+        self.rng = getattr(gen, "rng", random.Random())
+
+        # --- find player start (prefer AIRLOCK) ---
         start = None
-        for (x, y), s in self.map.grid.items():
-            if getattr(s, "type", "").upper() == "AIRLOCK":
-                start = (x, y)
-                break
+        try:
+            for (x, y), s in self.map.grid.items():
+                if getattr(s, "type", "").upper() == "AIRLOCK":
+                    start = (x, y)
+                    break
+        except Exception:
+            start = None
         if start is None:
-            start = (0, 0)
+            # fallback: try map.get_sector if available, else (0,0)
+            try:
+                sec = self.map.get_sector(0, 0)
+                if sec:
+                    start = (sec.x, sec.y)
+                else:
+                    start = (0, 0)
+            except Exception:
+                start = (0, 0)
 
+        # --- player and core systems ---
         self.player = Player(x=start[0], y=start[1])
         self.input_handler = None
         self.renderer = None
         self.running = True
+
+        # messages buffer and debug push helper
         self.messages = []
+        # event system
         self.event_defs = load_event_defs()
         self.event_engine = EventEngine(self, event_defs=self.event_defs)
+
+        # last position for linger logic
         self._last_pos = (self.player.x, self.player.y)
 
-        self.push_message("[debug] game initialized, messages buffer created")
+        # tick and ambient systems
+        self.tick_counter = 0
+        # ambient tuning (can be overridden later)
+        self.ambient_spawn_interval = getattr(self, "ambient_spawn_interval", 20)
+        self.ambient_message_chance = getattr(self, "ambient_message_chance", 0.06)
+
+        # load ambient messages (non-fatal)
+        try:
+            # expects Game._load_ambient_messages(path) to exist; if not, this is a no-op
+            if hasattr(self, "_load_ambient_messages"):
+                self._load_ambient_messages("data/ambient_messages.json")
+            else:
+                # minimal fallback: empty list
+                self.ambient_messages = []
+        except Exception:
+            self.ambient_messages = []
+
+        # expose map generator on game for convenience (some code expects game.map.generator)
+        self.map.generator = gen
+
+        # startup flavor messages
         self.push_message(
             "Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod."
         )
         self.push_message("Type 'help' for commands. Use WASD to move.")
+
 
     def push_message(self, text):
         if not hasattr(self, "messages"):
@@ -204,3 +265,67 @@ class Game:
         if self.renderer:
             self.renderer.render()
         self.running = False
+
+    # in Game class
+    def tick_spawn_ambient(self):
+        # called every few ticks
+        if not getattr(self, "map", None):
+            return
+        # small chance per tick to spawn 0..2 items
+        if self.rng.random() > 0.25:
+            return
+        attempts = 8
+        for _ in range(self.rng.randint(1,2)):
+            rx = self.rng.randrange(0, self.map.width)
+            ry = self.rng.randrange(0, self.map.height)
+            sec = self.map.grid.get((rx, ry))
+            if not sec:
+                continue
+            # prefer empty or low-object sectors
+            if getattr(sec, "objects", None) and len(sec.objects) >= 2:
+                continue
+            # choose a filler template id list (match ids you added)
+            filler_ids = ["debris_small", "battery_pack", "note_scrap"]
+            tpl = self.map.generator.template_index.get(self.rng.choice(filler_ids))
+            if not tpl:
+                # fallback: pick any template with small weight
+                candidates = [t for t in self.map.generator.templates if t.get("kind")=="template" and t.get("type") in ("debris","item","log")]
+                if not candidates:
+                    continue
+                tpl = self.rng.choice(candidates)
+            obj = self.map.generator._instantiate_from_template(tpl, sec)
+            sec.objects.append(obj)
+    
+    def _load_ambient_messages(self, path: str = "data/ambient_messages.json"):
+        """
+        Load ambient messages from a JSON file into self.ambient_messages.
+        Non‑fatal: on error or missing file, sets an empty list.
+        """
+        from pathlib import Path
+        import json
+        self.ambient_messages = []
+        try:
+            p = Path(path)
+            # try a few sensible fallbacks
+            if not p.exists():
+                p = Path.cwd() / "data" / "ambient_messages.json"
+            if not p.exists():
+                # try relative to the project (two levels up from this file)
+                p = Path(__file__).resolve().parents[2] / "data" / "ambient_messages.json"
+            if not p.exists():
+                # nothing found — keep empty list
+                return
+            with p.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                # keep only non-empty strings
+                self.ambient_messages = [str(s).strip() for s in data if isinstance(s, str) and s.strip()]
+        except Exception as e:
+            # non-fatal: keep empty list and log to stderr if possible
+            try:
+                import sys
+                print(f"[debug] failed to load ambient messages: {e}", file=sys.stderr)
+            except Exception:
+                pass
+            self.ambient_messages = []
+

@@ -34,15 +34,15 @@ CRASH_LOG = Path("crash.log")
 
 
 def _init_curses(stdscr):
-    # základní nastavení curses
+    # curses.wrapper() already handles noecho() and cbreak()
+    # only do stdscr-specific setup here
     try:
         curses.curs_set(0)
     except Exception:
         pass
     try:
-        curses.noecho()
-        curses.cbreak()
         stdscr.keypad(True)
+        stdscr.timeout(100)
     except Exception:
         pass
     if curses.has_colors():
@@ -51,8 +51,6 @@ def _init_curses(stdscr):
             curses.use_default_colors()
         except Exception:
             pass
-    # non-blocking getch timeout
-    stdscr.timeout(100)
 
 
 def _safe_write_crash(exc: Exception):
