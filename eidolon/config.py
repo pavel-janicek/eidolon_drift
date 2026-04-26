@@ -10,4 +10,4 @@ HEALTH_RED_THRESHOLD = 0.25
 # nové volitelné výchozí hodnoty pro generátor
 DEFAULT_BASE_DENSITY = 0.1   # doporučené rozmezí 0.03..0.12
 DEFAULT_MIN_DISTANCE = 3      # doporučené rozmezí 2..6
-GAME_VERSION = "0.7.0"
+GAME_VERSION = "0.8.0"
