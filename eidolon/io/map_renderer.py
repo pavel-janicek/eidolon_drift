@@ -5,7 +5,7 @@ class MapRenderer:
     def __init__(self, parent):
         self.parent = parent
 
-    def render_map(self):
+    def render(self):
         win = self.parent.map_win or self.parent.stdscr
         try:
             if self.parent.map_win:
