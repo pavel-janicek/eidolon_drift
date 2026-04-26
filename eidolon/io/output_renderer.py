@@ -1,6 +1,7 @@
 # eidolon/io/output_renderer.py
 import textwrap
 import curses
+from eidolon.io.map_renderer import MapRenderer
 from eidolon.world.map import Map
 from eidolon.config import HEALTH_RED_THRESHOLD, HEALTH_YELLOW_THRESHOLD, MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME
 
@@ -250,7 +251,8 @@ class OutputRenderer:
         except Exception as e:
             self.game.push_message(f"[debug] status render error: {e}")
         try:
-            self._render_map()
+            maprenderer = MapRenderer(self)
+            maprenderer.render_map()
         except Exception as e:
             self.game.push_message(f"[debug] map render error: {e}")
         try:
@@ -360,75 +362,7 @@ class OutputRenderer:
             if not getattr(self, "_status_outer_err_emitted", False):
                 self.game.push_message(f"[debug] status outer error: {e}")
                 self._status_outer_err_emitted = True
-
-    def _render_map(self):
-        win = self.map_win or self.stdscr
-        try:
-            if self.map_win:
-                win.erase()
-                win.box()
-            h, w = win.getmaxyx()
-            inner_h = max(0, h - 2)
-            inner_w = max(0, w - 2)
-
-            for y in range(min(self.map.height, inner_h)):
-                for x in range(min(self.map.width, inner_w)):
-                    ch = self.map.get_tile_char(x, y) or "."
-                    sector = self.map.get_sector(x, y)
-                    obj_marker = None
-                    if sector and sector.objects:
-                        for o in sector.objects:
-                            if isinstance(o, dict) and o.get("type") == "log":
-                                obj_marker = "l"
-                                break
-                            if isinstance(o, dict) and o.get("type") == "anomaly":
-                                obj_marker = "x"
-                                break
-                            if isinstance(o, dict) and o.get("type") == "item":
-                                obj_marker = "i"
-                                break
-                    if self.player.x == x and self.player.y == y:
-                        ch = "@"
-                        attr = curses.A_BOLD | (curses.color_pair(
-                            2) if self.colors_available else 0)
-                    else:
-                        # object has priority
-                        if obj_marker and self.colors_available:
-                            try:
-                                first = sector.objects[0]
-                                otype = first.get("type")
-                                pair = self.obj_color_map.get(otype)
-                                if pair:
-                                    attr = curses.color_pair(pair) | curses.A_BOLD
-                                else:
-                                    attr = curses.A_NORMAL
-                            except Exception:
-                                attr = curses.A_NORMAL
-                            ch = obj_marker
-
-                    # sector color (only if no object)
-                        elif self.colors_available:
-                            stype = sector.type
-                            pair = self.sector_color_map.get(stype)
-                            if pair:
-                                attr = curses.color_pair(pair)
-                            else:
-                                attr = curses.A_NORMAL
-
-                        else:
-                            attr = curses.A_NORMAL
-
-                    try:
-                        win.addstr(1 + y, 1 + x, str(ch), attr)
-                    except Exception as e:
-                        # avoid flooding messages: emit once per cell error type
-                        if not getattr(self, "_map_cell_err_emitted", False):
-                            self.game.push_message(
-                                f"[debug] map draw cell error: {e} x={x} y={y} ch={ch}")
-                            self._map_cell_err_emitted = True
-                        continue
-        except Exception as e:
-            self.game.push_message(f"[debug] map draw error: {e}")
+        
 
     def _render_description(self):
         """
