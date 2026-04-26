@@ -3,7 +3,6 @@ import curses
 from eidolon.world.map import Map
 from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME
 
-# fallback constants if config missing
 MIN_MAP_W = MIN_MAP_WIDTH if 'MIN_MAP_WIDTH' in globals() else 10
 MIN_MAP_H = MIN_MAP_HEIGHT if 'MIN_MAP_HEIGHT' in globals() else 5
 
@@ -19,6 +18,7 @@ class OutputRenderer:
         self.map_win = None
         self.status_win = None
         self.msg_win = None
+        self.desc_win = None  # new: description window
 
         # colors and theme
         self.colors_available = False
@@ -29,7 +29,6 @@ class OutputRenderer:
             "high_contrast": {1: (curses.COLOR_WHITE, curses.COLOR_BLACK), 2: (curses.COLOR_BLACK, curses.COLOR_WHITE), 3: (curses.COLOR_YELLOW, curses.COLOR_BLACK), 4: (curses.COLOR_RED, curses.COLOR_BLACK), 5: (curses.COLOR_MAGENTA, curses.COLOR_BLACK)}
         }
 
-        # init colors and apply theme
         self._init_colors()
         try:
             self.apply_theme(self.theme)
@@ -44,7 +43,6 @@ class OutputRenderer:
                     curses.use_default_colors()
                 except Exception:
                     pass
-                # default pairs to avoid missing pairs
                 curses.init_pair(1, curses.COLOR_CYAN, -1)
                 curses.init_pair(2, curses.COLOR_YELLOW, -1)
                 curses.init_pair(3, curses.COLOR_GREEN, -1)
@@ -80,17 +78,36 @@ class OutputRenderer:
         maxy, maxx = self.stdscr.getmaxyx()
         status_h = 3
         msg_h = max(4, maxy // 5)
-        map_h = maxy - status_h - msg_h - 4
-        map_w = min(self.map.width + 2, maxx - 4)
+        # reserve a description column width if space allows
+        preferred_desc_w = 30
+        # compute map area width first
+        map_w = min(self.map.width + 2, maxx - 6 - preferred_desc_w)
+        # if not enough space for side description, map takes full width and desc goes below
+        side_desc = True
+        if map_w < MIN_MAP_W:
+            map_w = min(self.map.width + 2, maxx - 4)
+            side_desc = False
 
-        # enforce config minima
+        map_h = maxy - status_h - msg_h - 4
         if map_h < MIN_MAP_H:
             map_h = MIN_MAP_H
-        if map_w < MIN_MAP_W:
-            map_w = MIN_MAP_W
 
-        map_x = max(1, (maxx - map_w) // 2)
+        # positions
+        map_x = max(1, 1)
         map_y = status_h
+
+        # if side_desc possible, desc on right; else desc below map
+        if side_desc and (map_w + preferred_desc_w + 6 <= maxx):
+            desc_w = preferred_desc_w
+            desc_h = map_h
+            desc_x = map_x + map_w + 2
+            desc_y = map_y
+        else:
+            # desc below map, full width
+            desc_w = max(20, maxx - 4)
+            desc_h = max(4, (maxy - status_h - msg_h - 6) // 3)
+            desc_x = 1
+            desc_y = map_y + map_h + 1
 
         # create or resize windows safely
         try:
@@ -101,7 +118,10 @@ class OutputRenderer:
                 self.map_win.mvwin(map_y, map_x)
         except Exception as e:
             self.map_win = None
-            self.game.push_message(f"[debug] map_win error: {e}")
+            # one-time debug only
+            if not getattr(self, "_map_win_err_emitted", False):
+                self.game.push_message(f"[debug] map_win error: {e}")
+                self._map_win_err_emitted = True
 
         try:
             if self.status_win is None:
@@ -111,7 +131,9 @@ class OutputRenderer:
                 self.status_win.mvwin(0, 1)
         except Exception as e:
             self.status_win = None
-            self.game.push_message(f"[debug] status_win error: {e}")
+            if not getattr(self, "_status_win_err_emitted", False):
+                self.game.push_message(f"[debug] status_win error: {e}")
+                self._status_win_err_emitted = True
 
         try:
             if self.msg_win is None:
@@ -121,8 +143,23 @@ class OutputRenderer:
                 self.msg_win.mvwin(maxy - msg_h - 1, 1)
         except Exception as e:
             self.msg_win = None
-            self.game.push_message(f"[debug] msg_win error: {e}")
+            if not getattr(self, "_msg_win_err_emitted", False):
+                self.game.push_message(f"[debug] msg_win error: {e}")
+                self._msg_win_err_emitted = True
 
+        try:
+            if self.desc_win is None:
+                self.desc_win = curses.newwin(desc_h, desc_w, desc_y, desc_x)
+            else:
+                self.desc_win.resize(desc_h, desc_w)
+                self.desc_win.mvwin(desc_y, desc_x)
+        except Exception as e:
+            self.desc_win = None
+            if not getattr(self, "_desc_win_err_emitted", False):
+                self.game.push_message(f"[debug] desc_win error: {e}")
+                self._desc_win_err_emitted = True
+
+        # one-time layout info
         if not self._layout_debug_emitted:
             try:
                 info = {
@@ -130,6 +167,7 @@ class OutputRenderer:
                     "map_win": None if not self.map_win else (self.map_win.getbegyx(), self.map_win.getmaxyx()),
                     "status_win": None if not self.status_win else (self.status_win.getbegyx(), self.status_win.getmaxyx()),
                     "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
+                    "desc_win": None if not self.desc_win else (self.desc_win.getbegyx(), self.desc_win.getmaxyx()),
                 }
                 self.game.push_message(f"[debug] layout info: {info}")
             except Exception:
@@ -149,7 +187,6 @@ class OutputRenderer:
             self.game.push_message(f"[debug] layout error: {e}")
             return
 
-        # preserve the bottom prompt line when redrawing the screen
         try:
             self.stdscr.move(0, 0)
             self.stdscr.clrtoeol()
@@ -164,7 +201,6 @@ class OutputRenderer:
         except Exception:
             pass
 
-        # render panes
         try:
             self._render_status()
         except Exception as e:
@@ -174,17 +210,22 @@ class OutputRenderer:
         except Exception as e:
             self.game.push_message(f"[debug] map render error: {e}")
         try:
+            self._render_description()
+        except Exception as e:
+            self.game.push_message(f"[debug] description render error: {e}")
+        try:
             self._render_messages()
         except Exception as e:
             self.game.push_message(f"[debug] messages render error: {e}")
 
-        # refresh
         try:
             self.stdscr.noutrefresh()
             if self.status_win:
                 self.status_win.noutrefresh()
             if self.map_win:
                 self.map_win.noutrefresh()
+            if self.desc_win:
+                self.desc_win.noutrefresh()
             if self.msg_win:
                 self.msg_win.noutrefresh()
             curses.doupdate()
@@ -218,9 +259,7 @@ class OutputRenderer:
             h, w = win.getmaxyx()
             inner_h = max(0, h - 2)
             inner_w = max(0, w - 2)
-        
-            sample_sector = self.map.get_sector(0, 0)
-            
+
             for y in range(min(self.map.height, inner_h)):
                 for x in range(min(self.map.width, inner_w)):
                     ch = self.map.get_tile_char(x, y) or "."
@@ -243,11 +282,81 @@ class OutputRenderer:
                     try:
                         win.addstr(1 + y, 1 + x, str(ch), attr)
                     except Exception as e:
-                        self.game.push_message(f"[debug] map draw cell error: {e} x={x} y={y} ch={ch}"
-                        )
+                        # avoid flooding messages: emit once per cell error type
+                        if not getattr(self, "_map_cell_err_emitted", False):
+                            self.game.push_message(f"[debug] map draw cell error: {e} x={x} y={y} ch={ch}")
+                            self._map_cell_err_emitted = True
                         continue
         except Exception as e:
             self.game.push_message(f"[debug] map draw error: {e}")
+
+    def _render_description(self):
+        win = self.desc_win or self.stdscr
+        try:
+            win.erase()
+            if self.desc_win:
+                win.box()
+            # get current sector
+            sector = None
+            try:
+                sector = self.map.get_sector(self.player.x, self.player.y)
+            except Exception:
+                sector = None
+            title = "Sector"
+            desc = "You see nothing special."
+            objects = []
+            if sector:
+                title = getattr(sector, "title", None) or getattr(sector, "name", None) or f"Sector {self.player.x},{self.player.y}"
+                # sector may have description field or short_desc
+                desc = getattr(sector, "description", None) or getattr(sector, "short_desc", None) or ""
+                # collect object names/titles
+                for o in getattr(sector, "objects", []) or []:
+                    if isinstance(o, dict):
+                        objects.append(o.get("title") or o.get("name") or "<object>")
+                    elif isinstance(o, str):
+                        objects.append(o)
+            # draw title
+            try:
+                win.addstr(1, 2, title[:(win.getmaxyx()[1]-4)], curses.A_BOLD)
+            except Exception:
+                pass
+            # draw description (wrap na řádky)
+            maxy, maxx = win.getmaxyx()
+            desc_lines = []
+            if desc:
+                # simple wrap
+                line = ""
+                for word in desc.split():
+                    if len(line) + 1 + len(word) < maxx - 4:
+                        line = (line + " " + word).strip()
+                    else:
+                        desc_lines.append(line)
+                        line = word
+                if line:
+                    desc_lines.append(line)
+            # print desc lines
+            for i, ln in enumerate(desc_lines[: maxy - 6]):
+                try:
+                    win.addstr(3 + i, 2, ln)
+                except Exception:
+                    pass
+            # print objects header and list
+            obj_start = 3 + len(desc_lines)
+            if obj_start < maxy - 2:
+                try:
+                    win.addstr(obj_start, 2, "Objects:", curses.A_UNDERLINE)
+                except Exception:
+                    pass
+                for j, name in enumerate(objects[: maxy - obj_start - 3]):
+                    try:
+                        win.addstr(obj_start + 1 + j, 3, f"- {name}"[: maxx - 6])
+                    except Exception:
+                        pass
+        except Exception as e:
+            # do not flood messages
+            if not getattr(self, "_desc_err_emitted", False):
+                self.game.push_message(f"[debug] description draw error: {e}")
+                self._desc_err_emitted = True
 
     def _render_messages(self):
         win = self.msg_win or self.stdscr
@@ -264,7 +373,9 @@ class OutputRenderer:
                 except Exception:
                     continue
         except Exception as e:
-            self.game.push_message(f"[debug] messages draw error: {e}")
+            if not getattr(self, "_msg_draw_err_emitted", False):
+                self.game.push_message(f"[debug] messages draw error: {e}")
+                self._msg_draw_err_emitted = True
 
     def open_pager(self, lines):
         stdscr = self.stdscr
@@ -307,5 +418,4 @@ class OutputRenderer:
                 top = 0
             elif ch == curses.KEY_END:
                 top = max(0, pad_h - view_h)
-        # restore main render
         self.render()
