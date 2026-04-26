@@ -3,6 +3,7 @@ import random
 import json
 import sys
 from pathlib import Path
+from eidolon.world import sector
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
 from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT
@@ -57,8 +58,8 @@ class MapGenerator:
     použijí se minimální rozměry z configu (MIN_MAP_WIDTH / MIN_MAP_HEIGHT).
     seed je volitelný; pokud je None, náhodí se standardní random.
     """
-    def __init__(self, width=None, height=None, seed=None):
-        # pokud nejsou předány, použij minimální rozměry
+    def __init__(self, width=None, height=None, seed=None, base_density=0.06, min_distance=3):
+        # width/height handling as before...
         self.width = int(width) if width is not None else int(MIN_MAP_WIDTH)
         self.height = int(height) if height is not None else int(MIN_MAP_HEIGHT)
         if self.width < MIN_MAP_WIDTH:
@@ -66,17 +67,22 @@ class MapGenerator:
         if self.height < MIN_MAP_HEIGHT:
             self.height = MIN_MAP_HEIGHT
 
-        if seed is not None:
-            random.seed(seed)
+    # use a dedicated RNG instance so we don't clobber global random state
+        if random.seed is None:
+        # truly random seed
+            self.rng = random.Random()
+        else:
+            self.rng = random.Random(random.seed)
 
-        # najdi data dir robustně
+        self.base_density = float(base_density)  # základní pravděpodobnost spawn per-sector
+        self.min_distance = int(min_distance)    # minimalni manhattan vzdalenost mezi objekty
+
         self.data_dir = _find_data_dir()
         self.templates, self.template_index = _load_templates(self.data_dir)
         self.log_pool = load_logs()
-
-        # informativní výpis (stderr)
         data_path = (self.data_dir / "objects.json") if self.data_dir else Path("data/objects/objects.json")
-        print(f"[mapgen] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
+        print(f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
+
 
     def generate(self, width=None, height=None):
         """
@@ -199,7 +205,11 @@ class MapGenerator:
         return env
 
     def _choose_templates_for_sector(self, sector_type):
-        # return list of templates with spawn_weight for this sector_type
+        """
+        Vrátí seznam (template, weight) pro daný sector_type.
+        Weight je normalizovaná pravděpodobnost (0..1) pro základní roll,
+        ale může být >1 pokud chceš více šancí (pak se použije cap).
+        """
         choices = []
         for t in self.templates:
             if not isinstance(t, dict) or t.get("kind") != "template":
@@ -210,34 +220,63 @@ class MapGenerator:
                 w = float(w)
             except Exception:
                 w = 0.0
-            # treat weight as probability cap at 1.0
-            w = max(0.0, min(1.0, w))
+            # normalize: treat >1 as relative weight; we'll cap per-roll probability later
             if w > 0:
                 choices.append((t, w))
-        return choices
+        return random.choices
 
     def _populate_objects(self, sector):
+        """
+        Nová strategie:
+        - pro každý sektor vezmeme kandidáty (templates) a pro každý uděláme roll:
+        p = base_density * tpl_weight_modifier * local_modifier
+        - pokud roll uspěje, zkusíme vložit objekt, ale nejdřív zkontrolujeme min_distance
+        - tímto způsobem se objekty rozptýlí rovnoměrněji
+        """
+        # candidates pro tento sector
         choices = self._choose_templates_for_sector(sector.type)
+        if not random.choices:
+            return
+
+    # local modifier: např. zvýšit šanci v některých typech nebo náhodně
+        local_noise = self.rng.uniform(0.7, 1.3)
+
+    # iterate through candidates in random order to avoid bias
+        self.rng.shuffle(random.choices)
+
         for tpl, weight in choices:
             try:
-                if random.random() < weight:
+                # compute per-sector spawn probability
+                # weight může být interpretován jako relativní váha; mapujeme ho na pravděpodobnost
+                # základ: p = base_density * weight * local_noise
+                p = self.base_density * float(weight) * local_noise
+                # cap p na 0.9 pro bezpečnost
+                p = max(0.0, min(0.9, p))
+
+                if self.rng.random() < p:
+                    # vybereme pozici: zde už jsme v konkrétním sektoru, takže instanciujeme přímo
+                    # ale zkontrolujeme okolí (min_distance)
+                    if not self._can_place_in_sector(sector):
+                        continue
                     obj = self._instantiate_from_template(tpl, sector)
                     if not hasattr(sector, "objects") or sector.objects is None:
                         sector.objects = []
                     sector.objects.append(obj)
-                    # linger behavior
-                    if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
-                        event_id = tpl.get("linger_event", tpl.get("id"))
-                        if event_id:
-                            th = tpl.get("linger_threshold", 2)
-                            sector.linger_thresholds[th] = sector.linger_thresholds.get(th, []) + [event_id]
-                            obj["_linger_threshold"] = th
-                            obj["_linger_event"] = event_id
+
+                # linger behavior (stejné jako dříve)
+                if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
+                    event_id = tpl.get("linger_event", tpl.get("id"))
+                    if event_id:
+                        th = tpl.get("linger_threshold", 2)
+                        sector.linger_thresholds[th] = sector.linger_thresholds.get(th, []) + [event_id]
+                        obj["_linger_threshold"] = th
+                        obj["_linger_event"] = event_id
             except Exception as e:
                 print(f"[mapgen] error instantiating template {tpl.get('id','?')}: {e}", file=sys.stderr)
-                continue
+            continue
 
     def _instantiate_from_template(self, tpl, sector):
+        # zachovej původní logiku, ale používej self.rng místo random
         obj = dict(tpl) if isinstance(tpl, dict) else {"name": str(tpl)}
         obj.pop("spawn_weight", None)
         obj.pop("kind", None)
@@ -253,12 +292,12 @@ class MapGenerator:
                     for l in self.log_pool:
                         if l.get("id") == lid:
                             selected_log = l
-                            break
+                        break
                     if selected_log:
                         break
 
             if selected_log is None and self.log_pool:
-                selected_log = random.choice(self.log_pool)
+                selected_log = self.rng.choice(self.log_pool)
 
             if selected_log:
                 template_str = obj.get("content_template", "{text}")
@@ -269,9 +308,46 @@ class MapGenerator:
                 obj["content"] = content
                 if not obj.get("title"):
                     obj["title"] = selected_log.get("title", obj.get("name", "log"))
-                obj["fragmented"] = random.random() < obj.get("fragmented_chance", 0.3)
+                obj["fragmented"] = self.rng.random() < obj.get("fragmented_chance", 0.3)
             else:
                 obj["content"] = obj.get("content_template", "{text}").format(text="An unreadable log entry.")
                 obj["fragmented"] = False
 
         return obj
+    
+    def _can_place_in_sector(self, sector):
+        """
+        Jednoduchá kontrola: pokud v okolí (Manhattan) existuje objekt, zmenšíme šanci.
+        Vrací True pokud je bezpečné vložit objekt.
+        """
+        # pokud sektor už má objekty, povolit jen omezený počet
+        if getattr(sector, "objects", None):
+            # limit na 2 objekty v jednom sektoru
+            if len(sector.objects) >= 2:
+                return False
+
+        # check neighbors within min_distance
+        sx, sy = sector.x, sector.y
+        # pokud nemáme přístup k celé mapě, povolit
+        if not hasattr(self, "width") or not hasattr(self, "height"):
+            return True
+        # map grid není přímo dostupný zde; očekáváme, že sector má referenci na map nebo že
+        # MapGenerator má přístup k aktuálnímu grid při volání _populate_objects.
+        # Pokud nemáš grid jako atribut, tuto kontrolu můžeš vypnout nebo upravit.
+        grid = getattr(self, "current_grid", None)
+        if not grid:
+            return True
+
+        for dx in range(-self.min_distance, self.min_distance + 1):
+            for dy in range(-self.min_distance, self.min_distance + 1):
+                if abs(dx) + abs(dy) > self.min_distance:
+                    continue
+                nx, ny = sx + dx, sy + dy
+                if (nx, ny) == (sx, sy):
+                    continue
+                neighbor = grid.get((nx, ny))
+                if neighbor and getattr(neighbor, "objects", None):
+                    # pokud v okolí už jsou objekty, sniž šanci (vrátíme False s vysokou pravděpodobností)
+                    if self.rng.random() < 0.8:
+                        return False
+        return True
