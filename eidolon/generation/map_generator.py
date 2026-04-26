@@ -8,9 +8,6 @@ from eidolon.world.sector import Sector
 from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, SEED, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE
 from eidolon.generation.log_loader import load_logs
 
-SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
-
-
 def _find_data_dir():
     here = Path(__file__).resolve()
     for up in range(1, 5):
@@ -26,22 +23,28 @@ def _find_data_dir():
 def _load_templates(data_dir):
     templates = []
     by_id = {}
+    config = {}
     if not data_dir:
-        return templates, by_id
+        return templates, by_id, config
     p = data_dir / "objects.json"
     if not p.exists():
-        return templates, by_id
+        return templates, by_id, config
     try:
         with open(p, "r", encoding="utf-8") as f:
-            templates = json.load(f)
+            data = json.load(f)
+            for item in data:
+                if isinstance(item, dict):
+                    kind = item.get("kind")
+                    if kind == "config":
+                        config.update(item)
+                    elif kind in ("template", "description"):
+                        templates.append(item)
+                        if "id" in item:
+                            by_id[item["id"]] = item
     except Exception as e:
         print(f"[mapgen] failed to load templates: {e}", file=sys.stderr)
-        return [], {}
-    try:
-        by_id = {t["id"]: t for t in templates if isinstance(t, dict) and "id" in t}
-    except Exception:
-        by_id = {}
-    return templates, by_id
+        return [], {}, {}
+    return templates, by_id, config
 
 
 class MapGenerator:
@@ -74,13 +77,12 @@ class MapGenerator:
         self.min_distance = int(min_distance) if min_distance is not None else int(DEFAULT_MIN_DISTANCE)
 
         self.data_dir = _find_data_dir()
-        self.templates, self.template_index = _load_templates(self.data_dir)
+        self.templates, self.template_index, self.config = _load_templates(self.data_dir)
         self.log_pool = load_logs()
         data_path = (self.data_dir / "objects.json") if self.data_dir else Path("data/objects/objects.json")
         print(f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
 
-        # current_grid bude nastaven v generate() pro kontrolu okolí při spawnování
-        self.current_grid = None
+        self.sector_types = self.config.get("sector_types", ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"])
 
     # --- helper methods for region placement ---------------------------------
     def _rects_overlap(self, a, b, gap=0):

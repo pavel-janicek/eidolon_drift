@@ -164,5 +164,11 @@
     "description": "A small sealed crate. Might contain supplies.",
     "spawn_weight": {"CARGO": 0.5, "CREW": 0.05, "EMPTY": 0.02},
     "density_modifier": 1.2
+  },
+
+  {
+    "id": "config_sector_types",
+    "kind": "config",
+    "sector_types": ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
   }
 ]
