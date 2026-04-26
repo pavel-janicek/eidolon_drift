@@ -164,90 +164,41 @@ class MapGenerator:
                     s.objects = []
                 grid[(x, y)] = s
 
-        # region placement with spacing
-        min_gap = max(2, getattr(self, "min_distance", 3))
-        placed_rects = []
-
-        # Bridge: small region in top-left quadrant
-        bridge_w = self.rng.randint(2, max(2, w // 6))
-        bridge_h = self.rng.randint(2, max(2, h // 6))
-        bridge_rect = self._place_region(w, h, bridge_w, bridge_h, prefer_area=(0, 0, max(0, w // 3), max(0, h // 3)), existing=placed_rects, attempts=120, min_gap=min_gap)
-        if bridge_rect:
-            bx0, by0, bx1, by1 = bridge_rect
-            self._fill_region(grid, bx0, by0, bx1, by1, "BRIDGE", "Bridge", density=0.9)
-            placed_rects.append(bridge_rect)
-            # carve a small adjacent crew area if space allows
-            creww = min(w, bridge_w + self.rng.randint(1, max(1, w // 8)))
-            crewh = min(h, bridge_h + self.rng.randint(1, max(1, h // 8)))
-            crect = (max(0, bx1 + 1), by0, min(w - 1, bx1 + creww), min(h - 1, by0 + crewh))
-            if not any(self._rects_overlap(crect, ex, gap=min_gap) for ex in placed_rects):
-                self._fill_region(grid, crect[0], crect[1], crect[2], crect[3], "CREW", "Crew", density=0.6)
-                placed_rects.append(crect)
-
-        # Engineering band: try to place across middle with jitter and avoid overlaps
-        eng_h = max(1, min(3, max(1, h // 10)))
-        eng_w = max(3, w - 4)
-        eng_y = max(1, min(h - eng_h - 1, h // 2 + self.rng.randint(-max(1, h // 8), max(1, h // 8))))
-        eng_rect = (0, eng_y, eng_w - 1, eng_y + eng_h - 1)
-        # shift if overlapping
-        for i in range(8):
-            if not any(self._rects_overlap(eng_rect, ex, gap=min_gap) for ex in placed_rects):
-                break
-            delta = self.rng.choice([-1, 1]) * (i + 1)
-            new_y = max(1, min(h - eng_h - 1, eng_y + delta))
-            eng_rect = (0, new_y, eng_w - 1, new_y + eng_h - 1)
-        self._fill_region(grid, eng_rect[0], eng_rect[1], eng_rect[2], eng_rect[3], "ENGINEERING", "ENGINEERING", density=0.85)
-        placed_rects.append(eng_rect)
-
-        # Medbay: small region in upper half, avoid overlaps
-        medbay_w = max(2, min(w // 6, 6))
-        medbay_h = max(2, min(h // 6, 6))
-        medbay_rect = self._place_region(w, h, medbay_w, medbay_h, prefer_area=(0, 0, w // 2, max(1, h // 2)), existing=placed_rects, attempts=80, min_gap=min_gap)
-        if medbay_rect:
-            self._fill_region(grid, medbay_rect[0], medbay_rect[1], medbay_rect[2], medbay_rect[3], "MEDBAY", "MEDBAY", density=0.7)
-            placed_rects.append(medbay_rect)
-
-        # Cargo: place in lower-right quadrant with spacing
-        cargo_w = max(3, min(w // 4, 8))
-        cargo_h = max(3, min(h // 4, 8))
-        cargo_rect = self._place_region(w, h, cargo_w, cargo_h, prefer_area=(max(0, w // 2), max(0, h // 2), w - 1, h - 1), existing=placed_rects, attempts=120, min_gap=min_gap)
-        if cargo_rect:
-            self._fill_region(grid, cargo_rect[0], cargo_rect[1], cargo_rect[2], cargo_rect[3], "CARGO", "CARGO", density=0.6)
-            placed_rects.append(cargo_rect)
-
-        # Airlocks: pick two distinct edge positions, ensure gap from other regions
-        air_candidates = []
-        if w > 1:
-            air_candidates.append((w - 1, self.rng.randint(0, h - 1)))
-            air_candidates.append((0, self.rng.randint(0, h - 1)))
-        if h > 1:
-            air_candidates.append((self.rng.randint(0, w - 1), 0))
-            air_candidates.append((self.rng.randint(0, w - 1), h - 1))
-        self.rng.shuffle(air_candidates)
-        seen = set()
-        for x, y in air_candidates:
-            if len(seen) >= 2:
-                break
-            # ensure not inside any placed_rects (with gap)
-            inside = False
-            for ex in placed_rects:
-                if self._rects_overlap((x, y, x, y), ex, gap=min_gap):
-                    inside = True
-                    break
-            if inside:
-                continue
-            seen.add((x, y))
-            try:
-                grid[(x, y)].type = "AIRLOCK"
-                name = "Outer Airlock" if x == w - 1 else "Rear Airlock"
-                grid[(x, y)].name = name
-            except Exception:
-                pass
+        # randomly assign sector types across the map
+        # weights are normalized to sum to 1.0
+        sector_type_weights = {
+            "BRIDGE": 0.02,
+            "ENGINEERING": 0.03,
+            "CREW": 0.05,
+            "MEDBAY": 0.03,
+            "CARGO": 0.02,
+            "AIRLOCK": 0.01,
+            "EMPTY": 0.84
+        }
+        
+        bridge_placed = False
+        for y in range(h):
+            for x in range(w):
+                sector = grid[(x, y)]
+                rand = self.rng.random()
+                cumulative = 0.0
+                
+                # randomly select a sector type based on weights
+                for stype, weight in sector_type_weights.items():
+                    cumulative += weight
+                    if rand < cumulative:
+                        sector.type = stype
+                        sector.name = f"{stype}-{x}-{y}"
+                        if stype == "BRIDGE":
+                            bridge_placed = True
+                        break
 
         # fallback: ensure at least one bridge tile exists
-        if not any(grid[pos].type == "BRIDGE" for pos in grid):
-            grid[(0, 0)].type = "BRIDGE"
-            grid[(0, 0)].name = "Command Module"
+        if not bridge_placed:
+            bridge_x = self.rng.randint(0, w - 1)
+            bridge_y = self.rng.randint(0, h - 1)
+            grid[(bridge_x, bridge_y)].type = "BRIDGE"
+            grid[(bridge_x, bridge_y)].name = "Command Module"
 
         # descriptions map
         desc_map = {}
@@ -273,20 +224,31 @@ class MapGenerator:
             except Exception as e:
                 print(f"[mapgen] populate error at {x},{y}: {e}", file=sys.stderr)
 
-        # place escape pod near bridge (try to find a nearby empty crew tile)
+        # place escape pod near a bridge sector
         ex_x, ex_y = None, None
-        # prefer tile adjacent to bridge_rect if available
-        if 'bridge_rect' in locals() and bridge_rect:
-            bx0, by0, bx1, by1 = bridge_rect
-            # search right of bridge for a crew tile
-            for dx in range(1, 4):
-                candidate = (min(w - 1, bx1 + dx), by0)
-                if candidate in grid:
-                    ex_x, ex_y = candidate
+        # find all bridge sectors
+        bridge_sectors = [(x, y) for (x, y) in grid if grid[(x, y)].type == "BRIDGE"]
+        if bridge_sectors:
+            # pick a random bridge sector
+            bridge_x, bridge_y = self.rng.choice(bridge_sectors)
+            # try to find an adjacent empty or crew tile for escape pod
+            candidates = [
+                (bridge_x + 1, bridge_y),
+                (bridge_x - 1, bridge_y),
+                (bridge_x, bridge_y + 1),
+                (bridge_x, bridge_y - 1),
+            ]
+            for cx, cy in candidates:
+                if (cx, cy) in grid:
+                    ex_x, ex_y = cx, cy
                     break
-        # fallback to (1,0)
-        if ex_x is None:
-            ex_x, ex_y = (1, 0)
+            # fallback to bridge sector itself if no adjacent tile
+            if ex_x is None:
+                ex_x, ex_y = bridge_x, bridge_y
+        else:
+            # this shouldn't happen due to fallback, but just in case
+            ex_x, ex_y = 0, 0
+
         if (ex_x, ex_y) in grid:
             sec = grid[(ex_x, ex_y)]
             if not hasattr(sec, "objects") or sec.objects is None:

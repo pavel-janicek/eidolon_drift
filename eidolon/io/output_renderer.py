@@ -494,6 +494,4 @@ def wrap_text(text, width):
         return [""]
     return textwrap.wrap(text, width=width) or [""]
 
-# do třídy OutputRenderer (nebo kde máš metody renderování) přidej:
-
 
