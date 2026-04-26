@@ -296,38 +296,61 @@ class Game:
             obj = self.map.generator._instantiate_from_template(tpl, sec)
             sec.objects.append(obj)
     
-    def _load_ambient_messages(self, path: str = "data/ambient_messages.json"):
+    def _load_ambient_messages(self, path: str = None):
         """
-        Load ambient messages from a JSON file into self.ambient_messages.
-        Non‑fatal: on error or missing file, sets an empty list.
+        Robustní loader ambientních zpráv.
+        - path: může být absolutní nebo relativní; pokud None, zkusíme několik standardních míst.
+        - výstup: self.ambient_messages = list[str]
+        - debug: vypisuje do stderr, co našel / proč selhal.
         """
         from pathlib import Path
-        import json
+        import json, sys
+
         self.ambient_messages = []
-        try:
-            p = Path(path)
-            # try a few sensible fallbacks
-            if not p.exists():
-                p = Path.cwd() / "data" / "ambient_messages.json"
-            if not p.exists():
-                # try relative to the project (two levels up from this file)
-                p = Path(__file__).resolve().parents[2] / "data" / "ambient_messages.json"
-            if not p.exists():
-                # nothing found — keep empty list
-                return
-            with p.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, list):
-                # keep only non-empty strings
-                self.ambient_messages = [str(s).strip() for s in data if isinstance(s, str) and s.strip()]
-        except Exception as e:
-            # non-fatal: keep empty list and log to stderr if possible
+
+        # candidate paths (in order)
+        candidates = []
+        if path:
+            candidates.append(Path(path))
+        # project-specific absolute path you mentioned
+        candidates.append(Path("/home/janipav/Documents/sangha/eidoloon_drift/eidolon/data/ambient_messages.json"))
+        # cwd/data
+        candidates.append(Path.cwd() / "data" / "ambient_messages.json")
+        # repo relative: two levels up from this file (adjust if your layout differs)
+        candidates.append(Path(__file__).resolve().parents[2] / "data" / "ambient_messages.json")
+        # package data folder next to module
+        candidates.append(Path(__file__).resolve().parent.parent / "data" / "ambient_messages.json")
+
+        tried = []
+        for p in candidates:
             try:
-                import sys
-                print(f"[debug] failed to load ambient messages: {e}", file=sys.stderr)
+                p = p.resolve()
             except Exception:
+                # ignore resolution errors, keep original Path
                 pass
-            self.ambient_messages = []
+            tried.append(str(p))
+            if not p.exists():
+                continue
+            try:
+                with p.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    msgs = [str(s).strip() for s in data if isinstance(s, str) and s.strip()]
+                    if msgs:
+                        self.ambient_messages = msgs
+                        print(f"[debug] loaded {len(msgs)} ambient messages from {p}", file=sys.stderr)
+                        return
+                    else:
+                        print(f"[debug] file {p} parsed but contains no valid strings", file=sys.stderr)
+                else:
+                    print(f"[debug] file {p} parsed but top-level JSON is not a list", file=sys.stderr)
+            except Exception as e:
+                print(f"[debug] failed to read/parse {p}: {e}", file=sys.stderr)
+
+        # nothing found
+        print(f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
+        self.ambient_messages = []
+
 
     def debug_emit_ambient(self):
         if not getattr(self, "ambient_messages", None):
