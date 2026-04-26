@@ -50,7 +50,8 @@
     "title": "Small Medkit",
     "description": "A compact medkit. Restores 25 health when used.",
     "on_use": {"action": "heal", "amount": 25},
-    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.15, "ENGINEERING": 0.05}
+    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.15, "ENGINEERING": 0.05},
+    "density_modifier": 1.0
   },
 
   {
@@ -63,7 +64,8 @@
     "linger_damage": 2,
     "linger_event": "residue_nausea",
     "linger_message": "You feel nauseous from the residue.",
-    "spawn_weight": {"CARGO": 0.12, "CREW": 0.06}
+    "spawn_weight": {"CARGO": 0.12, "CREW": 0.06},
+    "density_modifier": 0.6
   },
 
   {
@@ -76,7 +78,8 @@
     "linger_damage": 1,
     "linger_event": "signal_headache",
     "linger_message": "A piercing headache builds as the signal pulses.",
-    "spawn_weight": {"ENGINEERING": 0.08, "EMPTY": 0.03}
+    "spawn_weight": {"ENGINEERING": 0.08, "EMPTY": 0.03},
+    "density_modifier": 0.5
   },
 
   {
@@ -90,7 +93,8 @@
     "linger_sanity": 5,
     "linger_event": "spore_exposure",
     "linger_message": "The spores bite at your lungs and mind.",
-    "spawn_weight": {"MEDBAY": 0.04, "CREW": 0.05}
+    "spawn_weight": {"MEDBAY": 0.04, "CREW": 0.05},
+    "density_modifier": 0.4
   },
 
   {
@@ -102,7 +106,8 @@
     "description": "A personal log terminal. Use 'inspect' to read.",
     "content_template": "Log entry: {text}",
     "fragmented_chance": 0.35,
-    "spawn_weight": {"BRIDGE": 0.5, "CREW": 0.25, "ENGINEERING": 0.2}
+    "spawn_weight": {"BRIDGE": 0.5, "CREW": 0.25, "ENGINEERING": 0.2},
+    "density_modifier": 0.9
   },
 
   {
@@ -113,6 +118,51 @@
     "title": "Emergency Ration",
     "description": "A sealed packet of food and water. Restores a small amount of health over time.",
     "on_use": {"action": "heal", "amount": 10},
-    "spawn_weight": {"CARGO": 0.4, "CREW": 0.1}
+    "spawn_weight": {"CARGO": 0.4, "CREW": 0.1},
+    "density_modifier": 1.0
+  },
+
+  {
+    "id": "debris_small",
+    "kind": "template",
+    "type": "debris",
+    "name": "debris",
+    "title": "Scattered Debris",
+    "description": "Bits of broken equipment and loose panels.",
+    "spawn_weight": {"EMPTY": 0.15, "CREW": 0.05, "CARGO": 0.08, "ENGINEERING": 0.06},
+    "density_modifier": 1.4
+  },
+
+  {
+    "id": "toolbox_small",
+    "kind": "template",
+    "type": "item",
+    "name": "toolbox",
+    "title": "Toolbox",
+    "description": "A small toolbox with basic tools.",
+    "spawn_weight": {"ENGINEERING": 0.25, "CARGO": 0.05, "CREW": 0.02},
+    "density_modifier": 1.1
+  },
+
+  {
+    "id": "battery_pack",
+    "kind": "template",
+    "type": "item",
+    "name": "battery",
+    "title": "Battery Pack",
+    "description": "A spare battery pack. Useful for powering small devices.",
+    "spawn_weight": {"ENGINEERING": 0.12, "CARGO": 0.08, "EMPTY": 0.02},
+    "density_modifier": 1.2
+  },
+
+  {
+    "id": "small_crate",
+    "kind": "template",
+    "type": "item",
+    "name": "crate",
+    "title": "Small Crate",
+    "description": "A small sealed crate. Might contain supplies.",
+    "spawn_weight": {"CARGO": 0.5, "CREW": 0.05, "EMPTY": 0.02},
+    "density_modifier": 1.2
   }
 ]
