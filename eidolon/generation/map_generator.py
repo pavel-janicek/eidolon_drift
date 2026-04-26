@@ -97,33 +97,65 @@ class MapGenerator:
                     s.objects = []
                 grid[(x, y)] = s
 
-        # carve layout using local w,h
-        for yy in range(0, max(2, h // 4)):
-            for xx in range(0, max(3, w // 4)):
-                stype = "BRIDGE" if (xx == 0 and yy == 0) else "CREW"
-                grid[(xx, yy)].type = stype
-                grid[(xx, yy)].name = f"{stype}-{xx}-{yy}"
+        def fill_region(x0, y0, x1, y1, stype, name_prefix=None, density=1.0):
+            for yy in range(max(0, y0), min(h, y1 + 1)):
+                for xx in range(max(0, x0), min(w, x1 + 1)):
+                    if self.rng.random() <= density:
+                        sector = grid[(xx, yy)]
+                        sector.type = stype
+                        sector.name = f"{name_prefix or stype}-{xx}-{yy}"
 
-        mid_y = h // 2
-        for xx in range(w // 4, 3 * w // 4):
-            grid[(xx, mid_y)].type = "ENGINEERING"
-            grid[(xx, mid_y)].name = f"ENGINEERING-{xx}-{mid_y}"
+        # bridge + crew cluster
+        bridge_w = self.rng.randint(2, max(3, w // 5))
+        bridge_h = self.rng.randint(2, max(2, h // 5))
+        fill_region(0, 0, bridge_w - 1, bridge_h - 1, "BRIDGE", "Bridge")
 
-        for yy in range(h - max(3, h // 4), h):
-            for xx in range(w - max(4, w // 4), w):
-                grid[(xx, yy)].type = "CARGO"
-                grid[(xx, yy)].name = f"CARGO-{xx}-{yy}"
+        crew_w = max(2, min(w // 4, w - bridge_w - 1))
+        crew_h = max(2, min(h // 4, h - bridge_h - 1))
+        fill_region(bridge_w, 0, bridge_w + crew_w - 1, crew_h - 1, "CREW", "Crew", density=0.75)
+        fill_region(0, bridge_h, crew_w - 1, bridge_h + crew_h - 1, "CREW", "Crew", density=0.75)
 
-        try:
-            grid[(w - 1, h // 2)].type = "AIRLOCK"
-            grid[(w - 1, h // 2)].name = "Outer Airlock"
-        except Exception:
-            pass
-        try:
-            grid[(0, h - 1)].type = "AIRLOCK"
-            grid[(0, h - 1)].name = "Rear Airlock"
-        except Exception:
-            pass
+        # medbay region somewhere near the upper half, not overlapping the bridge cluster
+        medbay_w = min(max(2, w // 6), max(2, w // 4))
+        medbay_h = min(max(2, h // 6), max(2, h // 4))
+        medbay_x = self.rng.randint(bridge_w, max(bridge_w, w - medbay_w - 2)) if w - medbay_w - bridge_w > 1 else bridge_w
+        medbay_y = self.rng.randint(1, max(1, h // 2 - medbay_h)) if h // 2 - medbay_h > 1 else 1
+        fill_region(medbay_x, medbay_y, medbay_x + medbay_w - 1, medbay_y + medbay_h - 1, "MEDBAY", "MEDBAY")
+
+        # engineering band through the middle with small random offset
+        eng_y = min(max(1, h // 2 + self.rng.randint(-1, 1)), h - 2)
+        eng_x0 = self.rng.randint(0, max(0, w // 5))
+        eng_x1 = self.rng.randint(min(w - 1, 3 * w // 4), w - 1)
+        fill_region(eng_x0, eng_y, eng_x1, min(h - 1, eng_y + self.rng.randint(0, 1)), "ENGINEERING", "ENGINEERING", density=0.95)
+
+        # cargo cluster with holes to reduce density
+        cargo_w = max(4, min(w // 3, w - 2))
+        cargo_h = max(3, min(h // 3, h - 2))
+        cargo_x0 = max(0, w - cargo_w - self.rng.randint(0, max(0, (w - cargo_w) // 2)))
+        cargo_y0 = max(h // 2, h - cargo_h - self.rng.randint(0, max(0, (h - cargo_h) // 2)))
+        fill_region(cargo_x0, cargo_y0, cargo_x0 + cargo_w - 1, cargo_y0 + cargo_h - 1, "CARGO", "CARGO", density=0.7)
+
+        airlocks = []
+        if w > 1:
+            airlocks.append((w - 1, self.rng.randint(0, h - 1)))
+            airlocks.append((0, self.rng.randint(0, h - 1)))
+        if h > 1:
+            airlocks.append((self.rng.randint(0, w - 1), 0))
+            airlocks.append((self.rng.randint(0, w - 1), h - 1))
+        self.rng.shuffle(airlocks)
+        seen = set()
+        for x, y in airlocks:
+            if len(seen) >= 2:
+                break
+            if (x, y) in seen:
+                continue
+            seen.add((x, y))
+            try:
+                grid[(x, y)].type = "AIRLOCK"
+                name = "Outer Airlock" if x == w - 1 else "Rear Airlock"
+                grid[(x, y)].name = name
+            except Exception:
+                pass
 
         bridge_pos = (0, 0)
         if bridge_pos in grid:
