@@ -151,7 +151,7 @@ class Game:
 
                 time.sleep(0.02)
 
-                if stdscr:
+                if stdscr and not getattr(self, "renderer", None):
                     try:
                         maxy, maxx = stdscr.getmaxyx()
                         for i, line in enumerate(self.messages[-6:], start=1):

@@ -77,18 +77,6 @@ class OutputRenderer:
             return False
 
     def _layout(self):
-        if not self._layout_debug_emitted:
-            try:
-                info = {
-                "term": (maxy, maxx),
-                "map_win": None if not self.map_win else (self.map_win.getbegyx(), self.map_win.getmaxyx()),
-                "status_win": None if not self.status_win else (self.status_win.getbegyx(), self.status_win.getmaxyx()),
-                "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
-                }
-                self.game.push_message(f"[debug] layout info: {info}")
-            except Exception:
-                pass
-        self._layout_debug_emitted = True
         maxy, maxx = self.stdscr.getmaxyx()
         status_h = 3
         msg_h = max(4, maxy // 5)
@@ -102,7 +90,7 @@ class OutputRenderer:
             map_w = MIN_MAP_W
 
         map_x = max(1, (maxx - map_w) // 2)
-        map_y = 2
+        map_y = status_h
 
         # create or resize windows safely
         try:
@@ -134,6 +122,19 @@ class OutputRenderer:
         except Exception as e:
             self.msg_win = None
             self.game.push_message(f"[debug] msg_win error: {e}")
+
+        if not self._layout_debug_emitted:
+            try:
+                info = {
+                    "term": (maxy, maxx),
+                    "map_win": None if not self.map_win else (self.map_win.getbegyx(), self.map_win.getmaxyx()),
+                    "status_win": None if not self.status_win else (self.status_win.getbegyx(), self.status_win.getmaxyx()),
+                    "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
+                }
+                self.game.push_message(f"[debug] layout info: {info}")
+            except Exception:
+                pass
+            self._layout_debug_emitted = True
 
     def render(self):
         try:
@@ -174,6 +175,7 @@ class OutputRenderer:
 
         # refresh
         try:
+            self.stdscr.noutrefresh()
             if self.status_win:
                 self.status_win.noutrefresh()
             if self.map_win:
@@ -211,6 +213,14 @@ class OutputRenderer:
             h, w = win.getmaxyx()
             inner_h = max(0, h - 2)
             inner_w = max(0, w - 2)
+            self.game.push_message(
+                f"[debug] map render: win={win.getbegyx()} size={win.getmaxyx()} inner={inner_w}x{inner_h} map={self.map.width}x{self.map.height}"
+            )
+            sample_sector = self.map.get_sector(0, 0)
+            if sample_sector is not None:
+                self.game.push_message(
+                    f"[debug] sample sector 0,0 type={sample_sector.type} name={sample_sector.name} tile={self.map.get_tile_char(0,0)}"
+                )
             for y in range(min(self.map.height, inner_h)):
                 for x in range(min(self.map.width, inner_w)):
                     ch = self.map.get_tile_char(x, y) or "."
@@ -232,7 +242,9 @@ class OutputRenderer:
                         attr = curses.color_pair(3) if (self.colors_available and obj_marker) else curses.A_NORMAL
                     try:
                         win.addstr(1 + y, 1 + x, str(ch), attr)
-                    except Exception:
+                    except Exception as e:
+                        self.game.push_message(f"[debug] map draw cell error: {e} x={x} y={y} ch={ch}"
+                        )
                         continue
         except Exception as e:
             self.game.push_message(f"[debug] map draw error: {e}")
