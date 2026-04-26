@@ -1,5 +1,6 @@
 # eidolon/io/input_handler.py
 import curses
+import random
 from typing import Optional
 
 
@@ -122,6 +123,12 @@ class InputHandler:
             elif token == 'RIGHT':
                 dx = 1
 
+            if self.player.sanity < 30:
+                if random.random() < 0.1:
+                    dx, dy = random.choice([(1,0),(-1,0),(0,1),(0,-1)])
+                    self.push_message("You stumble...")
+    
+
             # prefer game.move_player(dx,dy) if existuje
             try:
                 if hasattr(self.game, "move_player"):
@@ -150,7 +157,7 @@ class InputHandler:
                             except Exception:
                                 pass
                         # push simple message
-                        self.game.push_message(f"You move to {p.x},{p.y}.")
+                        #self.game.push_message(f"You move to {p.x},{p.y}.")
                     else:
                         self.game.push_message("You can't move that way.")
                     return True

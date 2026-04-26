@@ -4,6 +4,7 @@ from importlib.resources import path
 from pathlib import Path
 import random
 from eidolon.generation.map_generator import MapGenerator
+from eidolon.world import sector
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
 from eidolon.io.output_renderer import OutputRenderer
@@ -251,6 +252,30 @@ class Game:
                     if event_def:
                         self.event_engine.trigger(event_def, sector)
                 sector.linger_counter = 0
+        # --- SANITY HANDLING ---
+
+        # 1) sanity decay over time (slow, atmospheric)
+        if not hasattr(self, "_sanity_tick_counter"):
+            self._sanity_tick_counter = 0
+
+        self._sanity_tick_counter += 1
+
+        # lose 1 sanity every 70 ticks
+        if self._sanity_tick_counter >= 70:
+            self.player.lose_sanity(1)
+            self._sanity_tick_counter = 0
+
+        # 2) anomaly proximity
+        sector = self.map.get_sector(self.player.x, self.player.y)
+        if sector and any(o.get("type") == "anomaly" for o in sector.objects):
+            self.player.lose_sanity(1)
+            self.push_message("You feel a pressure in your skull...")
+
+        # 3) optional: dark sectors
+        if sector and getattr(sector, "dark", False):
+            if random.random() < 0.05:  # 5% chance per tick
+                self.player.lose_sanity(1)
+        
 
     def handle_command(self, cmd):
         try:
