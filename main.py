@@ -23,10 +23,12 @@ except Exception:
     MapGenerator = None
 
 try:
-    from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT
+    from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE
 except Exception:
     MIN_MAP_WIDTH = 10
     MIN_MAP_HEIGHT = 5
+    DEFAULT_BASE_DENSITY = 0.06
+    DEFAULT_MIN_DISTANCE = 3
 
 CRASH_LOG = Path("crash.log")
 
@@ -142,7 +144,12 @@ def _run(stdscr):
     generated_map = None
     if MapGenerator is not None:
         try:
-            gen = MapGenerator(width=tiles_w, height=tiles_h)
+            gen = MapGenerator(
+                width=tiles_w,
+                height=tiles_h,
+                base_density=DEFAULT_BASE_DENSITY,
+                min_distance=DEFAULT_MIN_DISTANCE,
+            )
             # prefer explicit generate(width,height)
             generated_map = gen.generate(width=tiles_w, height=tiles_h)
         except Exception as e:
