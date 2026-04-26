@@ -24,6 +24,8 @@ CRASH_LOG = Path("crash.log")
 def _init_curses(stdscr):
     # základní nastavení curses
     curses.curs_set(0)
+    curses.noecho()
+    curses.cbreak()
     stdscr.keypad(True)
     if curses.has_colors():
         curses.start_color()

@@ -149,7 +149,12 @@ class OutputRenderer:
             self.game.push_message(f"[debug] layout error: {e}")
             return
 
-        self.stdscr.erase()
+        # preserve the bottom prompt line when redrawing the screen
+        try:
+            self.stdscr.move(0, 0)
+            self.stdscr.clrtoeol()
+        except Exception:
+            pass
         maxy, maxx = self.stdscr.getmaxyx()
         title = " EIDOLON DRIFT - Incident Response Terminal "
         try:
@@ -213,14 +218,9 @@ class OutputRenderer:
             h, w = win.getmaxyx()
             inner_h = max(0, h - 2)
             inner_w = max(0, w - 2)
-            self.game.push_message(
-                f"[debug] map render: win={win.getbegyx()} size={win.getmaxyx()} inner={inner_w}x{inner_h} map={self.map.width}x{self.map.height}"
-            )
+        
             sample_sector = self.map.get_sector(0, 0)
-            if sample_sector is not None:
-                self.game.push_message(
-                    f"[debug] sample sector 0,0 type={sample_sector.type} name={sample_sector.name} tile={self.map.get_tile_char(0,0)}"
-                )
+            
             for y in range(min(self.map.height, inner_h)):
                 for x in range(min(self.map.width, inner_w)):
                     ch = self.map.get_tile_char(x, y) or "."

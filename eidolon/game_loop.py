@@ -191,6 +191,13 @@ class Game:
                         self.event_engine.trigger(event_def, sector)
                 sector.linger_counter = 0
 
+    def handle_command(self, cmd):
+        try:
+            return cmdmod.handle_command(self, cmd)
+        except Exception as e:
+            self.push_message(f"[debug] game.handle_command error: {e}")
+            return f"Command error: {e}"
+
     def handle_death(self, reason="You died."):
         self.push_message(reason)
         self.push_message("You have died. Game over.")
