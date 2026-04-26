@@ -1,10 +1,16 @@
 # eidolon/io/output_renderer.py
 import curses
 from eidolon.world.map import Map
-from eidolon.config import HEALTH_RED_THRESHOLD, HEALTH_YELLOW_THRESHOLD, MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME
+from eidolon.config import (
+    HEALTH_RED_THRESHOLD,
+    HEALTH_YELLOW_THRESHOLD,
+    MIN_MAP_WIDTH,
+    MIN_MAP_HEIGHT,
+    DEFAULT_THEME,
+)
 
-MIN_MAP_W = MIN_MAP_WIDTH if 'MIN_MAP_WIDTH' in globals() else 10
-MIN_MAP_H = MIN_MAP_HEIGHT if 'MIN_MAP_HEIGHT' in globals() else 5
+MIN_MAP_W = MIN_MAP_WIDTH if "MIN_MAP_WIDTH" in globals() else 10
+MIN_MAP_H = MIN_MAP_HEIGHT if "MIN_MAP_HEIGHT" in globals() else 5
 
 
 class OutputRenderer:
@@ -23,11 +29,29 @@ class OutputRenderer:
 
         # colors and theme
         self.colors_available = False
-        self.theme = DEFAULT_THEME if 'DEFAULT_THEME' in globals() else "dark"
+        self.theme = DEFAULT_THEME if "DEFAULT_THEME" in globals() else "dark"
         self.THEMES = {
-            "dark": {1: (curses.COLOR_CYAN, -1), 2: (curses.COLOR_YELLOW, -1), 3: (curses.COLOR_GREEN, -1), 4: (curses.COLOR_RED, -1), 5: (curses.COLOR_MAGENTA, -1)},
-            "retro": {1: (curses.COLOR_WHITE, curses.COLOR_BLUE), 2: (curses.COLOR_BLACK, curses.COLOR_YELLOW), 3: (curses.COLOR_BLACK, curses.COLOR_GREEN), 4: (curses.COLOR_WHITE, curses.COLOR_RED), 5: (curses.COLOR_BLACK, curses.COLOR_MAGENTA)},
-            "high_contrast": {1: (curses.COLOR_WHITE, curses.COLOR_BLACK), 2: (curses.COLOR_BLACK, curses.COLOR_WHITE), 3: (curses.COLOR_YELLOW, curses.COLOR_BLACK), 4: (curses.COLOR_RED, curses.COLOR_BLACK), 5: (curses.COLOR_MAGENTA, curses.COLOR_BLACK)}
+            "dark": {
+                1: (curses.COLOR_CYAN, -1),
+                2: (curses.COLOR_YELLOW, -1),
+                3: (curses.COLOR_GREEN, -1),
+                4: (curses.COLOR_RED, -1),
+                5: (curses.COLOR_MAGENTA, -1),
+            },
+            "retro": {
+                1: (curses.COLOR_WHITE, curses.COLOR_BLUE),
+                2: (curses.COLOR_BLACK, curses.COLOR_YELLOW),
+                3: (curses.COLOR_BLACK, curses.COLOR_GREEN),
+                4: (curses.COLOR_WHITE, curses.COLOR_RED),
+                5: (curses.COLOR_BLACK, curses.COLOR_MAGENTA),
+            },
+            "high_contrast": {
+                1: (curses.COLOR_WHITE, curses.COLOR_BLACK),
+                2: (curses.COLOR_BLACK, curses.COLOR_WHITE),
+                3: (curses.COLOR_YELLOW, curses.COLOR_BLACK),
+                4: (curses.COLOR_RED, curses.COLOR_BLACK),
+                5: (curses.COLOR_MAGENTA, curses.COLOR_BLACK),
+            },
         }
 
         self._init_colors()
@@ -145,8 +169,7 @@ class OutputRenderer:
 
         try:
             if self.msg_win is None:
-                self.msg_win = curses.newwin(
-                    msg_h, maxx - 2, maxy - msg_h - 1, 1)
+                self.msg_win = curses.newwin(msg_h, maxx - 2, maxy - msg_h - 1, 1)
             else:
                 self.msg_win.resize(msg_h, maxx - 2)
                 self.msg_win.mvwin(maxy - msg_h - 1, 1)
@@ -173,10 +196,26 @@ class OutputRenderer:
             try:
                 info = {
                     "term": (maxy, maxx),
-                    "map_win": None if not self.map_win else (self.map_win.getbegyx(), self.map_win.getmaxyx()),
-                    "status_win": None if not self.status_win else (self.status_win.getbegyx(), self.status_win.getmaxyx()),
-                    "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
-                    "desc_win": None if not self.desc_win else (self.desc_win.getbegyx(), self.desc_win.getmaxyx()),
+                    "map_win": (
+                        None
+                        if not self.map_win
+                        else (self.map_win.getbegyx(), self.map_win.getmaxyx())
+                    ),
+                    "status_win": (
+                        None
+                        if not self.status_win
+                        else (self.status_win.getbegyx(), self.status_win.getmaxyx())
+                    ),
+                    "msg_win": (
+                        None
+                        if not self.msg_win
+                        else (self.msg_win.getbegyx(), self.msg_win.getmaxyx())
+                    ),
+                    "desc_win": (
+                        None
+                        if not self.desc_win
+                        else (self.desc_win.getbegyx(), self.desc_win.getmaxyx())
+                    ),
                 }
                 self.game.push_message(f"[debug] layout info: {info}")
             except Exception:
@@ -190,7 +229,8 @@ class OutputRenderer:
             try:
                 self.stdscr.erase()
                 self.stdscr.addstr(
-                    0, 0, " EIDOLON DRIFT - Incident Response Terminal ", curses.A_BOLD)
+                    0, 0, " EIDOLON DRIFT - Incident Response Terminal ", curses.A_BOLD
+                )
                 self.stdscr.refresh()
             except Exception:
                 pass
@@ -206,9 +246,10 @@ class OutputRenderer:
         title = " EIDOLON DRIFT - Incident Response Terminal "
         try:
             title_x = max(0, (maxx - len(title)) // 2)
-            attr = curses.A_BOLD | (curses.color_pair(
-                1) if self.colors_available else 0)
-            self.stdscr.addstr(0, title_x, title[:maxx-1], attr)
+            attr = curses.A_BOLD | (
+                curses.color_pair(1) if self.colors_available else 0
+            )
+            self.stdscr.addstr(0, title_x, title[: maxx - 1], attr)
         except Exception:
             pass
 
@@ -296,21 +337,24 @@ class OutputRenderer:
                 if filled > 0:
                     try:
                         win.addstr(
-                            1, start_x + 1, filled_str[:max_line], color_pair | curses.A_BOLD)
+                            1,
+                            start_x + 1,
+                            filled_str[:max_line],
+                            color_pair | curses.A_BOLD,
+                        )
                     except Exception:
                         # fallback: draw without color
-                        win.addstr(1, start_x + 1,
-                                   filled_str[:max_line], curses.A_BOLD)
+                        win.addstr(1, start_x + 1, filled_str[:max_line], curses.A_BOLD)
                 # draw empty segment
                 try:
-                    win.addstr(1, start_x + 1 + filled,
-                               empty_str[:max_line], curses.A_DIM)
+                    win.addstr(
+                        1, start_x + 1 + filled, empty_str[:max_line], curses.A_DIM
+                    )
                 except Exception:
                     pass
                 # draw right bracket
                 try:
-                    win.addstr(1, start_x + 1 + filled +
-                               empty, "]", curses.A_NORMAL)
+                    win.addstr(1, start_x + 1 + filled + empty, "]", curses.A_NORMAL)
                 except Exception:
                     pass
             except Exception as e:
@@ -353,19 +397,24 @@ class OutputRenderer:
                                 break
                     if self.player.x == x and self.player.y == y:
                         ch = "@"
-                        attr = curses.A_BOLD | (curses.color_pair(
-                            2) if self.colors_available else 0)
+                        attr = curses.A_BOLD | (
+                            curses.color_pair(2) if self.colors_available else 0
+                        )
                     else:
                         ch = obj_marker if obj_marker else ch
-                        attr = curses.color_pair(3) if (
-                            self.colors_available and obj_marker) else curses.A_NORMAL
+                        attr = (
+                            curses.color_pair(3)
+                            if (self.colors_available and obj_marker)
+                            else curses.A_NORMAL
+                        )
                     try:
                         win.addstr(1 + y, 1 + x, str(ch), attr)
                     except Exception as e:
                         # avoid flooding messages: emit once per cell error type
                         if not getattr(self, "_map_cell_err_emitted", False):
                             self.game.push_message(
-                                f"[debug] map draw cell error: {e} x={x} y={y} ch={ch}")
+                                f"[debug] map draw cell error: {e} x={x} y={y} ch={ch}"
+                            )
                             self._map_cell_err_emitted = True
                         continue
         except Exception as e:
@@ -387,21 +436,26 @@ class OutputRenderer:
             desc = "You see nothing special."
             objects = []
             if sector:
-                title = getattr(sector, "title", None) or getattr(
-                    sector, "name", None) or f"Sector {self.player.x},{self.player.y}"
+                title = (
+                    getattr(sector, "title", None)
+                    or getattr(sector, "name", None)
+                    or f"Sector {self.player.x},{self.player.y}"
+                )
                 # sector may have description field or short_desc
-                desc = getattr(sector, "description", None) or getattr(
-                    sector, "short_desc", None) or ""
+                desc = (
+                    getattr(sector, "description", None)
+                    or getattr(sector, "short_desc", None)
+                    or ""
+                )
                 # collect object names/titles
                 for o in getattr(sector, "objects", []) or []:
                     if isinstance(o, dict):
-                        objects.append(o.get("title") or o.get(
-                            "name") or "<object>")
+                        objects.append(o.get("title") or o.get("name") or "<object>")
                     elif isinstance(o, str):
                         objects.append(o)
             # draw title
             try:
-                win.addstr(1, 2, title[:(win.getmaxyx()[1]-4)], curses.A_BOLD)
+                win.addstr(1, 2, title[: (win.getmaxyx()[1] - 4)], curses.A_BOLD)
             except Exception:
                 pass
             # draw description (wrap na řádky)
@@ -433,8 +487,7 @@ class OutputRenderer:
                     pass
                 for j, name in enumerate(objects[: maxy - obj_start - 3]):
                     try:
-                        win.addstr(obj_start + 1 + j, 3,
-                                   f"- {name}"[: maxx - 6])
+                        win.addstr(obj_start + 1 + j, 3, f"- {name}"[: maxx - 6])
                     except Exception:
                         pass
         except Exception as e:
@@ -450,12 +503,22 @@ class OutputRenderer:
                 win.erase()
                 win.box()
             maxy, maxx = win.getmaxyx()
-            lines = self.game.messages[-(maxy - 2)                                       :] if maxy > 2 else self.game.messages[-1:]
+            lines = (
+                self.game.messages[-(maxy - 2) :]
+                if maxy > 2
+                else self.game.messages[-1:]
+            )
             for i, line in enumerate(lines):
                 try:
-                    attr = curses.color_pair(4) | curses.A_BOLD if (self.colors_available and (
-                        "WARNING" in line.upper() or "ANOMALY" in line.upper())) else curses.A_NORMAL
-                    win.addstr(1 + i, 2, line[:maxx - 4], attr)
+                    attr = (
+                        curses.color_pair(4) | curses.A_BOLD
+                        if (
+                            self.colors_available
+                            and ("WARNING" in line.upper() or "ANOMALY" in line.upper())
+                        )
+                        else curses.A_NORMAL
+                    )
+                    win.addstr(1 + i, 2, line[: maxx - 4], attr)
                 except Exception:
                     continue
         except Exception as e:
@@ -471,7 +534,7 @@ class OutputRenderer:
         pad = curses.newpad(pad_h, pad_w)
         for i, ln in enumerate(lines):
             try:
-                pad.addstr(i, 0, ln[:pad_w - 1])
+                pad.addstr(i, 0, ln[: pad_w - 1])
             except Exception:
                 pass
         top = 0
@@ -481,20 +544,21 @@ class OutputRenderer:
             try:
                 stdscr.erase()
                 stdscr.box()
-                stdscr.addstr(0, max(1, (maxx - len(title)) // 2),
-                              title, curses.A_REVERSE)
+                stdscr.addstr(
+                    0, max(1, (maxx - len(title)) // 2), title, curses.A_REVERSE
+                )
                 stdscr.noutrefresh()
                 pad.noutrefresh(top, 0, 1, 1, view_h, pad_w)
                 curses.doupdate()
             except Exception:
                 pass
             ch = stdscr.getch()
-            if ch in (ord('q'), 27):
+            if ch in (ord("q"), 27):
                 break
-            elif ch in (curses.KEY_DOWN, ord('j')):
+            elif ch in (curses.KEY_DOWN, ord("j")):
                 if top + view_h < pad_h:
                     top += 1
-            elif ch in (curses.KEY_UP, ord('k')):
+            elif ch in (curses.KEY_UP, ord("k")):
                 if top > 0:
                     top -= 1
             elif ch == curses.KEY_NPAGE:

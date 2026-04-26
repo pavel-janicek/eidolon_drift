@@ -1,50 +1,95 @@
 # eidolon/generation/map_generator.py
 import random
 import json
+import sys
 from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
-from eidolon.config import DEFAULT_MAP_WIDTH, DEFAULT_MAP_HEIGHT, SEED
+from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT
 from eidolon.generation.log_loader import load_logs
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "objects"
 SECTOR_TYPES = ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
 
-def _load_templates():
+
+def _find_data_dir():
+    """
+    Pokusí se najít adresář data/objects v několika běžných umístěních:
+    - relativně k tomuto modulu (parents 1..4)
+    - aktuální pracovní adresář
+    Vrací Path k adresáři (ne k souboru), nebo None pokud nenalezen.
+    """
+    here = Path(__file__).resolve()
+    for up in range(1, 5):
+        candidate = here.parents[up] / "data" / "objects"
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    # fallback: cwd/data/objects
+    candidate = Path.cwd() / "data" / "objects"
+    if candidate.exists() and candidate.is_dir():
+        return candidate
+    return None
+
+
+def _load_templates(data_dir):
     templates = []
     by_id = {}
-    p = DATA_DIR / "objects.json"
+    if not data_dir:
+        return templates, by_id
+    p = data_dir / "objects.json"
     if not p.exists():
         return templates, by_id
-
-    with open(p, "r", encoding="utf-8") as f:
-        templates = json.load(f)
-
-    by_id = {t["id"]: t for t in templates}
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            templates = json.load(f)
+    except Exception as e:
+        print(f"[mapgen] failed to load templates: {e}", file=sys.stderr)
+        return [], {}
+    try:
+        by_id = {t["id"]: t for t in templates if isinstance(t, dict) and "id" in t}
+    except Exception:
+        by_id = {}
     return templates, by_id
 
 
 class MapGenerator:
-    def __init__(self, width=DEFAULT_MAP_WIDTH, height=DEFAULT_MAP_HEIGHT, seed=SEED):
-        self.width = width
-        self.height = height
+    """
+    Generátor mapy. width/height jsou volitelné; pokud nejsou předány,
+    použijí se minimální rozměry z configu (MIN_MAP_WIDTH / MIN_MAP_HEIGHT).
+    seed je volitelný; pokud je None, náhodí se standardní random.
+    """
+    def __init__(self, width=None, height=None, seed=None):
+        # pokud nejsou předány, použij minimální rozměry
+        self.width = int(width) if width is not None else int(MIN_MAP_WIDTH)
+        self.height = int(height) if height is not None else int(MIN_MAP_HEIGHT)
+        if self.width < MIN_MAP_WIDTH:
+            self.width = MIN_MAP_WIDTH
+        if self.height < MIN_MAP_HEIGHT:
+            self.height = MIN_MAP_HEIGHT
+
         if seed is not None:
             random.seed(seed)
-        self.templates, self.template_index = _load_templates()
+
+        # najdi data dir robustně
+        self.data_dir = _find_data_dir()
+        self.templates, self.template_index = _load_templates(self.data_dir)
         self.log_pool = load_logs()
-        # debug: push message via game? map generator nemá game, tak print to stderr or log
-        import sys
-        print(f"[mapgen] loaded {len(self.templates)} templates from {DATA_DIR / 'objects.json'}", file=sys.stderr)
+
+        # informativní výpis (stderr)
+        data_path = (self.data_dir / "objects.json") if self.data_dir else Path("data/objects/objects.json")
+        print(f"[mapgen] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
 
     def generate(self):
         grid = {}
-        # create empty grid
+        # create empty grid with default sectors
         for y in range(self.height):
             for x in range(self.width):
-                grid[(x, y)] = Sector(x, y, f"EMPTY-{x}-{y}", "EMPTY", "A narrow corridor. The lights are dim.")
-                # initialize linger fields
-                grid[(x, y)].linger_counter = 0
-                grid[(x, y)].linger_thresholds = {}
+                s = Sector(x, y, f"EMPTY-{x}-{y}", "EMPTY", "A narrow corridor. The lights are dim.")
+                # ensure objects list and linger fields exist
+                if not hasattr(s, "objects") or s.objects is None:
+                    s.objects = []
+                s.linger_counter = getattr(s, "linger_counter", 0)
+                s.linger_thresholds = getattr(s, "linger_thresholds", {}) or {}
+                grid[(x, y)] = s
 
         # carve ship layout
         # Bridge region top-left
@@ -67,28 +112,50 @@ class MapGenerator:
                 grid[(x, y)].name = f"CARGO-{x}-{y}"
 
         # airlocks
-        grid[(self.width - 1, self.height // 2)].type = "AIRLOCK"
-        grid[(self.width - 1, self.height // 2)].name = "Outer Airlock"
-        grid[(0, self.height - 1)].type = "AIRLOCK"
-        grid[(0, self.height - 1)].name = "Rear Airlock"
+        try:
+            grid[(self.width - 1, self.height // 2)].type = "AIRLOCK"
+            grid[(self.width - 1, self.height // 2)].name = "Outer Airlock"
+        except Exception:
+            pass
+        try:
+            grid[(0, self.height - 1)].type = "AIRLOCK"
+            grid[(0, self.height - 1)].name = "Rear Airlock"
+        except Exception:
+            pass
 
         # ensure command module
         bridge_pos = (0, 0)
-        grid[bridge_pos].type = "BRIDGE"
-        grid[bridge_pos].name = "Command Module"
+        if bridge_pos in grid:
+            grid[bridge_pos].type = "BRIDGE"
+            grid[bridge_pos].name = "Command Module"
 
         # apply descriptions from templates if present
-        desc_map = {t["sector_type"]: t["text"] for t in self.templates if t.get("kind") == "description"}
-        for (x, y), sector in grid.items():
-            sector.description = desc_map.get(sector.type, sector.description)
-            sector.environment = self._random_environment(sector.type)
-            # populate objects using templates
-            self._populate_objects(sector)
+        desc_map = {}
+        try:
+            desc_map = {t["sector_type"]: t["text"] for t in self.templates if isinstance(t, dict) and t.get("kind") == "description"}
+        except Exception:
+            desc_map = {}
 
-        # place escape pod near bridge
+        for (x, y), sector in grid.items():
+            sector.description = desc_map.get(sector.type, getattr(sector, "description", ""))
+            sector.environment = self._random_environment(sector.type)
+            # ensure objects list exists
+            if not hasattr(sector, "objects") or sector.objects is None:
+                sector.objects = []
+            # populate objects using templates
+            try:
+                self._populate_objects(sector)
+            except Exception as e:
+                # nevyhazovat chybu generátoru kvůli jednomu sektoru
+                print(f"[mapgen] populate error at {x},{y}: {e}", file=sys.stderr)
+
+        # place escape pod near bridge (safe)
         ex_x, ex_y = 1, 0
         if (ex_x, ex_y) in grid:
-            grid[(ex_x, ex_y)].objects.append({
+            sec = grid[(ex_x, ex_y)]
+            if not hasattr(sec, "objects") or sec.objects is None:
+                sec.objects = []
+            sec.objects.append({
                 "type": "item",
                 "name": "escape-pod",
                 "title": "Escape Pod",
@@ -123,10 +190,16 @@ class MapGenerator:
         # return list of templates with spawn_weight for this sector_type
         choices = []
         for t in self.templates:
-            if t.get("kind") != "template":
+            if not isinstance(t, dict) or t.get("kind") != "template":
                 continue
             weights = t.get("spawn_weight", {})
             w = weights.get(sector_type, 0)
+            try:
+                w = float(w)
+            except Exception:
+                w = 0.0
+            # treat weight as probability cap at 1.0
+            w = max(0.0, min(1.0, w))
             if w > 0:
                 choices.append((t, w))
         return choices
@@ -134,28 +207,30 @@ class MapGenerator:
     def _populate_objects(self, sector):
         choices = self._choose_templates_for_sector(sector.type)
         for tpl, weight in choices:
-            if random.random() < weight:
-                obj = self._instantiate_from_template(tpl, sector)
-                sector.objects.append(obj)
-                # if template defines linger behavior, register event id(s)
-                if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
-                    # prefer explicit linger_event field, else use template id
-                    event_id = tpl.get("linger_event", tpl.get("id"))
-                    if event_id:
-                        # use threshold 2 by default (or tpl can define linger_threshold)
-                        th = tpl.get("linger_threshold", 2)
-                        # ensure list
-                        sector.linger_thresholds[th] = sector.linger_thresholds.get(th, []) + [event_id]
-                        # store metadata on object for reference
-                        obj["_linger_threshold"] = th
-                        obj["_linger_event"] = event_id
-
+            try:
+                if random.random() < weight:
+                    obj = self._instantiate_from_template(tpl, sector)
+                    if not hasattr(sector, "objects") or sector.objects is None:
+                        sector.objects = []
+                    sector.objects.append(obj)
+                    # linger behavior
+                    if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
+                        event_id = tpl.get("linger_event", tpl.get("id"))
+                        if event_id:
+                            th = tpl.get("linger_threshold", 2)
+                            sector.linger_thresholds[th] = sector.linger_thresholds.get(th, []) + [event_id]
+                            obj["_linger_threshold"] = th
+                            obj["_linger_event"] = event_id
+            except Exception as e:
+                print(f"[mapgen] error instantiating template {tpl.get('id','?')}: {e}", file=sys.stderr)
+                continue
 
     def _instantiate_from_template(self, tpl, sector):
-        obj = dict(tpl)
+        obj = dict(tpl) if isinstance(tpl, dict) else {"name": str(tpl)}
         obj.pop("spawn_weight", None)
         obj.pop("kind", None)
-        if "name" in obj:
+
+        if "name" in obj and isinstance(obj["name"], str):
             obj["name"] = obj["name"].lower()
 
         if obj.get("type") == "log":
@@ -188,5 +263,3 @@ class MapGenerator:
                 obj["fragmented"] = False
 
         return obj
-
-
