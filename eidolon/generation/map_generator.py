@@ -78,48 +78,61 @@ class MapGenerator:
         data_path = (self.data_dir / "objects.json") if self.data_dir else Path("data/objects/objects.json")
         print(f"[mapgen] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
 
-    def generate(self):
-        grid = {}
-        # create empty grid with default sectors
-        for y in range(self.height):
-            for x in range(self.width):
-                s = Sector(x, y, f"EMPTY-{x}-{y}", "EMPTY", "A narrow corridor. The lights are dim.")
-                # ensure objects list and linger fields exist
-                if not hasattr(s, "objects") or s.objects is None:
-                    s.objects = []
-                s.linger_counter = getattr(s, "linger_counter", 0)
-                s.linger_thresholds = getattr(s, "linger_thresholds", {}) or {}
-                grid[(x, y)] = s
+    def generate(self, width=None, height=None):
+        """
+        Generate map. If width/height provided, use them (they represent tile counts).
+        Otherwise fall back to self.width/self.height (which were set in __init__).
+        """
+        # prefer explicit args
+        w = int(width) if width is not None else int(self.width)
+        h = int(height) if height is not None else int(self.height)
 
-        # carve ship layout
+        # ensure minima
+        if w < MIN_MAP_WIDTH:
+            w = MIN_MAP_WIDTH
+        if h < MIN_MAP_HEIGHT:
+            h = MIN_MAP_HEIGHT
+
+        grid = {}
+        # create empty grid
+        for y in range(h):
+            for x in range(w):
+                grid[(x, y)] = Sector(x, y, f"EMPTY-{x}-{y}", "EMPTY", "A narrow corridor. The lights are dim.")
+                # initialize linger fields
+                grid[(x, y)].linger_counter = 0
+                grid[(x, y)].linger_thresholds = {}
+                if not hasattr(grid[(x, y)], "objects") or grid[(x, y)].objects is None:
+                    grid[(x, y)].objects = []
+
+        # rest of generation logic must use w,h instead of self.width/self.height
         # Bridge region top-left
-        for y in range(0, max(2, self.height // 4)):
-            for x in range(0, max(3, self.width // 4)):
-                stype = "BRIDGE" if (x == 0 and y == 0) else "CREW"
-                grid[(x, y)].type = stype
-                grid[(x, y)].name = f"{stype}-{x}-{y}"
+        for yy in range(0, max(2, h // 4)):
+            for xx in range(0, max(3, w // 4)):
+                stype = "BRIDGE" if (xx == 0 and yy == 0) else "CREW"
+                grid[(xx, yy)].type = stype
+                grid[(xx, yy)].name = f"{stype}-{xx}-{yy}"
 
         # engineering band
-        mid_y = self.height // 2
-        for x in range(self.width // 4, 3 * self.width // 4):
-            grid[(x, mid_y)].type = "ENGINEERING"
-            grid[(x, mid_y)].name = f"ENGINEERING-{x}-{mid_y}"
+        mid_y = h // 2
+        for xx in range(w // 4, 3 * w // 4):
+            grid[(xx, mid_y)].type = "ENGINEERING"
+            grid[(xx, mid_y)].name = f"ENGINEERING-{xx}-{mid_y}"
 
         # cargo aft
-        for y in range(self.height - max(3, self.height // 4), self.height):
-            for x in range(self.width - max(4, self.width // 4), self.width):
-                grid[(x, y)].type = "CARGO"
-                grid[(x, y)].name = f"CARGO-{x}-{y}"
+        for yy in range(h - max(3, h // 4), h):
+            for xx in range(w - max(4, w // 4), w):
+                grid[(xx, yy)].type = "CARGO"
+                grid[(xx, yy)].name = f"CARGO-{xx}-{yy}"
 
-        # airlocks
+        # airlocks (guarded)
         try:
-            grid[(self.width - 1, self.height // 2)].type = "AIRLOCK"
-            grid[(self.width - 1, self.height // 2)].name = "Outer Airlock"
+            grid[(w - 1, h // 2)].type = "AIRLOCK"
+            grid[(w - 1, h // 2)].name = "Outer Airlock"
         except Exception:
             pass
         try:
-            grid[(0, self.height - 1)].type = "AIRLOCK"
-            grid[(0, self.height - 1)].name = "Rear Airlock"
+            grid[(0, h - 1)].type = "AIRLOCK"
+            grid[(0, h - 1)].name = "Rear Airlock"
         except Exception:
             pass
 
@@ -129,7 +142,7 @@ class MapGenerator:
             grid[bridge_pos].type = "BRIDGE"
             grid[bridge_pos].name = "Command Module"
 
-        # apply descriptions from templates if present
+        # apply descriptions and populate objects (use same code but iterate over grid items)
         desc_map = {}
         try:
             desc_map = {t["sector_type"]: t["text"] for t in self.templates if isinstance(t, dict) and t.get("kind") == "description"}
@@ -142,14 +155,12 @@ class MapGenerator:
             # ensure objects list exists
             if not hasattr(sector, "objects") or sector.objects is None:
                 sector.objects = []
-            # populate objects using templates
             try:
                 self._populate_objects(sector)
             except Exception as e:
-                # nevyhazovat chybu generátoru kvůli jednomu sektoru
                 print(f"[mapgen] populate error at {x},{y}: {e}", file=sys.stderr)
 
-        # place escape pod near bridge (safe)
+        # place escape pod near bridge
         ex_x, ex_y = 1, 0
         if (ex_x, ex_y) in grid:
             sec = grid[(ex_x, ex_y)]
@@ -162,7 +173,8 @@ class MapGenerator:
                 "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch."
             })
 
-        return Map(self.width, self.height, grid)
+        return Map(w, h, grid)
+
 
     def _random_environment(self, sector_type):
         base_env = {
