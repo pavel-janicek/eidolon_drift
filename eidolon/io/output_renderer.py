@@ -403,99 +403,113 @@ class OutputRenderer:
         except Exception:
             return
 
-        # vyčistit okno
+        # vyčistit okno a vykreslit rámeček
         try:
             self.desc_win.erase()
+            # pokud je dost místa, vykreslíme box, a posuneme obsah o 1 řádek/1 sloupec
+            if maxy > 2 and maxx > 2:
+                try:
+                    self.desc_win.box()
+                    inner_y = 1
+                    inner_x = 1
+                    inner_h = maxy - 2
+                    inner_w = maxx - 2
+                except Exception:
+                    inner_y = 0
+                    inner_x = 0
+                    inner_h = maxy
+                    inner_w = maxx
+            else:
+                inner_y = 0
+                inner_x = 0
+                inner_h = maxy
+                inner_w = maxx
         except Exception:
-            pass
+            inner_y = 0
+            inner_x = 0
+            inner_h = maxy
+            inner_w = maxx
 
         # získat aktuální sektor
         try:
-            sector = self.game.map.get_sector(
-            self.game.player.x, self.game.player.y)
+            sector = self.game.map.get_sector(self.game.player.x, self.game.player.y)
         except Exception:
             sector = None
 
-        y = 0
-
-        # název sektoru
+        y = inner_y
+        x = inner_x
+        # název sektoru (tučně)
         title = getattr(sector, "name", "Unknown") if sector else "Unknown"
         try:
-            self.desc_win.addstr(y, 0, title[:maxx-1], curses.A_BOLD)
+            self.desc_win.addstr(y, x, title[:inner_w], curses.A_BOLD)
         except Exception:
             try:
-                self.desc_win.addstr(y, 0, title[:maxx-1])
+                self.desc_win.addstr(y, x, title[:inner_w])
             except Exception:
                 pass
-            y += 1
+        y += 1
 
         # popis sektoru (zalomení)
         desc = getattr(sector, "description", "") if sector else ""
-        for line in wrap_text(desc, maxx - 1):
-            if y >= maxy - 1:
+        for line in wrap_text(desc, inner_w):
+            if y >= inner_y + inner_h:
                 break
             try:
-                self.desc_win.addstr(y, 0, line[:maxx-1])
+                self.desc_win.addstr(y, x, line[:inner_w])
             except Exception:
                 pass
             y += 1
 
         # seznam objektů
         objs = getattr(sector, "objects", []) if sector else []
-        if objs:
-            if y < maxy - 1:
-                # prázdný řádek
-                try:
-                    self.desc_win.addstr(y, 0, "")
-                except Exception:
-                    pass
+        if objs and y < inner_y + inner_h:
+            # prázdný řádek pokud je místo
+            if y < inner_y + inner_h:
                 y += 1
-            if y < maxy - 1:
+            if y < inner_y + inner_h:
                 try:
-                    self.desc_win.addstr(y, 0, "Objects:", curses.A_UNDERLINE)
+                    self.desc_win.addstr(y, x, "Objects:", curses.A_UNDERLINE)
                 except Exception:
                     try:
-                        self.desc_win.addstr(y, 0, "Objects:")
+                        self.desc_win.addstr(y, x, "Objects:")
                     except Exception:
                         pass
                 y += 1
             for obj in objs:
-                if y >= maxy - 1:
+                if y >= inner_y + inner_h:
                     break
-                title = obj.get("title", obj.get("name", "object")
-                                ) if isinstance(obj, dict) else str(obj)
+                title = obj.get("title", obj.get("name", "object")) if isinstance(obj, dict) else str(obj)
                 try:
-                    self.desc_win.addstr(y, 0, f"- {title}"[:maxx-1])
+                    self.desc_win.addstr(y, x, f"- {title}"[:inner_w])
                 except Exception:
-                    pass
+                pass
                 y += 1
 
         # ambientní blok (zobrazí se krátce)
         amb_msg = getattr(self.game, "last_ambient_message", None)
-        if amb_msg:
+        if amb_msg and y < inner_y + inner_h:
             # rezervovat prázdný řádek pokud je místo
-            if y < maxy - 1:
+            if y < inner_y + inner_h:
                 y += 1
-            if y < maxy - 1:
+            if y < inner_y + inner_h:
                 try:
-                    self.desc_win.addstr(
-                        y, 0, "Ambient:", curses.A_BOLD | curses.A_UNDERLINE)
+                    self.desc_win.addstr(y, x, "Ambient:", curses.A_BOLD | curses.A_UNDERLINE)
                 except Exception:
                     try:
-                        self.desc_win.addstr(y, 0, "Ambient:")
+                        self.desc_win.addstr(y, x, "Ambient:")
                     except Exception:
                         pass
                 y += 1
             # samotná zpráva (zalomení) s jemným stylem
             style = curses.A_DIM
-            for line in wrap_text(amb_msg, maxx - 1):
-                if y >= maxy - 1:
+            for line in wrap_text(amb_msg, inner_w):
+                if y >= inner_y + inner_h:
                     break
                 try:
-                    self.desc_win.addstr(y, 0, line[:maxx-1], style)
+                    self.desc_win.addstr(y, x, line[:inner_w], style)
                 except Exception:
                     try:
-                        self.desc_win.addstr(y, 0, line[:maxx-1])
+                        self.desc_win.addstr(y, x, line[:inner_w])
                     except Exception:
                         pass
                 y += 1
