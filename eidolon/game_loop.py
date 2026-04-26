@@ -329,3 +329,15 @@ class Game:
                 pass
             self.ambient_messages = []
 
+    def debug_emit_ambient(self):
+        if not getattr(self, "ambient_messages", None):
+            import sys
+            print("[debug] no ambient messages loaded", file=sys.stderr)
+            return
+        # choose using game RNG for reproducibility
+        msg = self.rng.choice(self.ambient_messages) if getattr(self, "rng", None) else self.ambient_messages[0]
+        # debug print to stderr and push to in‑game messages
+        import sys
+        print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
+        self.push_message(msg)
+

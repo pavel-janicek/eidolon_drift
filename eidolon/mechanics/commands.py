@@ -68,10 +68,10 @@ def handle_command(game, raw_cmd: str) -> str:
     # v eidolon/mechanics/commands.py
     if verb == "dump-messages":
         return "\n".join(game.messages[-50:])
-
-
-
-
+    if cmd == "debug_emit_ambient":
+        game.debug_emit_ambient()
+        return
+    
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
 
 def _cmd_help():
