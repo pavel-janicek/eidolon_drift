@@ -5,7 +5,7 @@ from eidolon.io.description_renderer import DescriptionRenderer
 from eidolon.io.map_renderer import MapRenderer
 from eidolon.io.status_renderer import StatusRenderer
 from eidolon.world.map import Map
-from eidolon.config import HEALTH_RED_THRESHOLD, HEALTH_YELLOW_THRESHOLD, MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME
+from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME
 
 MIN_MAP_W = MIN_MAP_WIDTH if 'MIN_MAP_WIDTH' in globals() else 10
 MIN_MAP_H = MIN_MAP_HEIGHT if 'MIN_MAP_HEIGHT' in globals() else 5
@@ -358,5 +358,3 @@ class OutputRenderer:
         if not text:
             return [""]
         return textwrap.wrap(text, width=width) or [""]
-
-

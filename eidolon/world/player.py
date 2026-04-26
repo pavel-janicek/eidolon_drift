@@ -15,3 +15,10 @@ class Player:
         self.health = max(0, self.health - amount)
         if self.health == 0:
             self.alive = False
+
+    def lose_sanity(self, amount):
+        self.sanity = max(0, self.sanity - amount)
+
+    def gain_sanity(self, amount):
+        self.sanity = min(100, self.sanity + amount)
+        

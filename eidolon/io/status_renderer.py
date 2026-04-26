@@ -87,3 +87,51 @@ class StatusRenderer:
             if not getattr(self.parent, "_status_outer_err_emitted", False):
                 self.parent.game.push_message(f"[debug] status outer error: {e}")
                 self.parent._status_outer_err_emitted = True    
+
+       # --- SANITY BAR ---
+        p = self.parent.player   
+        san = max(0, min(p.sanity, 100))
+        san_pct = san / 100
+
+        # sanity bar length = stejný jako health bar
+        san_filled = int(san_pct * bar_len)
+        san_empty = bar_len - san_filled
+
+        san_filled_str = "#" * san_filled
+        san_empty_str = "-" * san_empty
+
+        # sanity bar text
+        san_text = f"Sanity: {san}/100 "
+        san_start_x = 2 + len(san_text)
+
+        # sanity bar color
+        san_color = curses.color_pair(13) if self.parent.colors_available else 0
+
+        # řádek sanity baru = o řádek níž než health bar
+        san_y = 2
+
+        try:
+            # label
+            win.addstr(san_y, 2, san_text[:max_line], curses.A_NORMAL)
+
+            # left bracket
+            win.addstr(san_y, san_start_x, "[", curses.A_NORMAL)
+
+            # filled part
+            if san_filled > 0:
+                win.addstr(san_y, san_start_x + 1,
+                    san_filled_str[:max_line], san_color | curses.A_BOLD)
+
+            # empty part
+            win.addstr(san_y, san_start_x + 1 + san_filled,
+               san_empty_str[:max_line], curses.A_DIM)
+
+            # right bracket
+            win.addstr(san_y, san_start_x + 1 + san_filled + san_empty,
+               "]", curses.A_NORMAL)
+
+        except Exception:
+            pass
+
+       
+                
