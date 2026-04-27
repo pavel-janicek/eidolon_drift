@@ -205,21 +205,21 @@
     "description": "A personal log terminal. Use 'inspect' to read.",
     "content_template": "Log entry: {text}",
     "fragmented_chance": 0.35,
-    "spawn_weight": {"BRIDGE": 0.5, "CREW": 0.25, "ENGINEERING": 0.2},
-    "density_modifier": 0.9
+    "spawn_weight": {"BRIDGE": 0.8, "CREW": 0.5, "ENGINEERING": 0.35, "CARGO": 0.1},
+    "density_modifier": 1.1
   },
 
   {
     "id": "log_medical",
     "kind": "template",
-    "type": "medical-log",
+    "type": "log",
     "name": "log-medical",
     "title": "Log - Medical",
     "description": "A medical log terminal. Use 'inspect' to read.",
     "content_template": "Medical - {text}",
     "fragmented_chance": 0.25,
-    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.2, "ENGINEERING": 0.1},
-    "density_modifier": 0.8
+    "spawn_weight": {"MEDBAY": 0.9, "CREW": 0.3, "ENGINEERING": 0.15, "CARGO": 0.1},
+    "density_modifier": 1.0
   },
 
 
