@@ -2,6 +2,7 @@
 # Cross-platform curses import
 try:
     import curses
+    import signal
 except ImportError:
     try:
         # Try windows-curses for Windows
@@ -161,6 +162,7 @@ class Game:
             "Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod."
         )
         self.push_message("Type 'help' for commands. Use WASD to move.")
+        self.awaiting_quit_confirm = False
 
 
     def push_message(self, text):
@@ -191,9 +193,11 @@ class Game:
             if key is None:
                 continue
 
-            if key == "QUIT":
-                self.running = False
-                break
+            if key == "QUIT_REQUEST":
+                self.awaiting_quit_confirm = True
+                self.push_message("Quit game? (y/n)")
+                continue
+
 
             if key.startswith("CMD:"):
                 cmd = key[4:]
@@ -215,85 +219,76 @@ class Game:
 
     def run(self, stdscr=None):
         import time
+        import signal
+
+        def _sigint_handler(signum, frame):
+            raise KeyboardInterrupt
+
+        signal.signal(signal.SIGINT, _sigint_handler)
 
         try:
             self.push_message("[debug] Game.run starting")
-        except Exception:
-            pass
 
-        if getattr(self, "renderer", None):
-            try:
-                self.renderer.render()
+            if self.renderer:
                 try:
-                    self.push_message("[debug] initial renderer.render() OK")
-                except Exception:
-                    pass
-            except Exception as e:
-                try:
+                    self.renderer.render()
+                except Exception as e:
                     self.push_message(f"[debug] initial renderer.render() failed: {e}")
-                except Exception:
-                    pass
 
-        try:
-            while getattr(self, "running", True):
-                if getattr(self, "renderer", None):
+            while self.running:
+
+                # quit confirm modal
+                if self.awaiting_quit_confirm:
+                    self._handle_quit_confirm()
+                    continue
+
+                # render
+                if self.renderer:
                     try:
                         self.renderer.render()
                     except Exception as e:
-                        try:
-                            self.push_message(f"[debug] renderer.render error: {e}")
-                        except Exception:
-                            pass
+                        self.push_message(f"[debug] renderer.render error: {e}")
 
-                if getattr(self, "input_handler", None):
-                    try:
-                        self.input_handler.process_once()
-                    except Exception as e:
-                        try:
-                            self.push_message(f"[debug] input_handler error: {e}")
-                        except Exception:
-                            pass
+                # input
+                if self.input_handler:
+                    token = self.input_handler.process_once()
                 else:
-                    if stdscr:
-                        try:
-                            ch = stdscr.getch()
-                            if ch in (ord("q"), 27):
-                                try:
-                                    self.push_message("[debug] quitting via key")
-                                except Exception:
-                                    pass
-                                self.running = False
-                        except Exception:
-                            pass
+                    token = None
 
-                try:
-                    self.tick()
-                except Exception as e:
-                    try:
-                        self.push_message(f"[debug] tick error: {e}")
-                    except Exception:
-                        pass
+                if token == "QUIT_REQUEST":
+                    self.awaiting_quit_confirm = True
+                    self.push_message("Quit game? (y/n)")
+                    continue
+
+                if token and token.startswith("CMD:"):
+                    cmd = token[4:]
+                    result = cmdmod.handle_command(self, cmd)
+                    if result:
+                        self.push_message(result)
+                    self.tick(action_type="command")
+                    continue
+
+                # movement
+                if token in ("UP", "DOWN", "LEFT", "RIGHT"):
+                    moved = move_player(self.map, self.player, token)
+                    if moved:
+                        sec = self.map.get_sector(self.player.x, self.player.y)
+                        #self.push_message(f"Moved to {sec.name}.")
+                    else:
+                        self.push_message("Cannot move there.")
+                    self.tick(action_type="move")
+                    continue
+
+                # tick
+                self.tick()
 
                 time.sleep(0.02)
 
-                if stdscr and not getattr(self, "renderer", None):
-                    try:
-                        maxy, maxx = stdscr.getmaxyx()
-                        for i, line in enumerate(self.messages[-6:], start=1):
-                            try:
-                                stdscr.addstr(i, 1, line[:maxx - 2])
-                            except Exception:
-                                pass
-                        stdscr.refresh()
-                    except Exception:
-                        pass
+        except KeyboardInterrupt:
+            self.awaiting_quit_confirm = True
+            self.push_message("Quit game? (y/n)")
 
-        except Exception as e:
-            try:
-                self.push_message(f"[fatal] Game.run crashed: {e}")
-            except Exception:
-                pass
-            raise
+
 
     def tick(self, action_type="move"):
         sector = self.map.get_sector(self.player.x, self.player.y)
@@ -489,3 +484,13 @@ class Game:
         print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
         self.push_message(msg)
 
+    def _handle_quit_confirm(self):
+        ch = self.stdscr.getch()
+        if ch in (ord('y'), ord('Y')):
+            self.push_message("[debug] quitting game")
+            self.running = False
+            return
+        if ch in (ord('n'), ord('N')):
+            self.push_message("Quit cancelled.")
+            self.awaiting_quit_confirm = False
+            return
