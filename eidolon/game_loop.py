@@ -135,8 +135,9 @@ class Game:
         # tick and ambient systems
         self.tick_counter = 0
         # ambient tuning (can be overridden later)
-        self.ambient_spawn_interval = getattr(self, "ambient_spawn_interval", 20)
-        self.ambient_message_chance = getattr(self, "ambient_message_chance", 0.06)
+        self.ambient_spawn_interval = getattr(self, "ambient_spawn_interval", 3000)
+        self.ambient_message_interval = getattr(self, "ambient_message_interval", 200)
+        self.current_ambient_message = None
 
         # load ambient messages (non-fatal)
         try:
@@ -148,6 +149,9 @@ class Game:
                 self.ambient_messages = []
         except Exception:
             self.ambient_messages = []
+
+        if getattr(self, "ambient_messages", None):
+            self.current_ambient_message = self.ambient_messages[0]
 
         # expose map generator on game for convenience (some code expects game.map.generator)
         self.map.generator = gen
@@ -351,6 +355,30 @@ class Game:
             self.player.gain_sanity(1)
             self._sanity_medbay_counter = 0
             self.push_message("You feel calmer here.")
+
+        # --- AMBIENT MESSAGE UPDATE ---
+        if not hasattr(self, "_ambient_message_tick_counter"):
+            self._ambient_message_tick_counter = 0
+
+        self._ambient_message_tick_counter += 1
+        if self._ambient_message_tick_counter >= self.ambient_message_interval:
+            if getattr(self, "ambient_messages", None):
+                self.current_ambient_message = (
+                    self.rng.choice(self.ambient_messages)
+                    if getattr(self, "rng", None)
+                    else self.ambient_messages[0]
+                )
+            self._ambient_message_tick_counter = 0
+
+        # --- AMBIENT SPAWNING ---
+        # Call ambient spawning on a configurable interval
+        if not hasattr(self, "_ambient_tick_counter"):
+            self._ambient_tick_counter = 0
+
+        self._ambient_tick_counter += 1
+        if self._ambient_tick_counter >= self.ambient_spawn_interval:
+            self.tick_spawn_ambient()
+            self._ambient_tick_counter = 0
         
         
 
@@ -370,11 +398,8 @@ class Game:
 
     # in Game class
     def tick_spawn_ambient(self):
-        # called every few ticks
+        # called on the ambient spawn interval
         if not getattr(self, "map", None):
-            return
-        # small chance per tick to spawn 0..2 items
-        if self.rng.random() > 0.25:
             return
         attempts = 8
         for _ in range(self.rng.randint(1,2)):

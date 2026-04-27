@@ -94,17 +94,11 @@ class DescriptionRenderer:
                 desc_lines = ["No sector data"]
 
             # Add ambient message if available
-            ambient_msg = getattr(game, "ambient_messages", None)
-            if ambient_msg and len(ambient_msg) > 0:
-                # Choose message using game RNG for reproducibility
-                rng = getattr(game, "rng", None)
-                if rng:
-                    msg = rng.choice(ambient_msg)
-                else:
-                    msg = ambient_msg[0]
+            ambient_msg = getattr(game, "current_ambient_message", None)
+            if ambient_msg:
                 desc_lines.append("")
                 desc_lines.append("Ambient:")
-                desc_lines.extend(self.output_renderer.wrap_text(msg, maxx - 4))
+                desc_lines.extend(self.output_renderer.wrap_text(ambient_msg, maxx - 4))
 
             # Render lines
             for i, line in enumerate(desc_lines[:maxy - 2]):
