@@ -90,10 +90,23 @@ class DescriptionRenderer:
             sector = game.map.get_sector(game.player.x, game.player.y) if game.map else None
             if sector:
                 desc_lines = self.output_renderer.wrap_text(sector.description or "Unknown sector", maxx - 4)
+
+                # Add object summary without replacing the main description
+                if getattr(sector, "objects", None):
+                    desc_lines.append("")
+                    desc_lines.append("Objects:")
+                    for obj in sector.objects[:5]:
+                        if isinstance(obj, dict):
+                            label = obj.get("name") or obj.get("description") or obj.get("type") or str(obj)
+                        else:
+                            label = str(obj)
+                        desc_lines.extend(self.output_renderer.wrap_text(f"  - {label}", maxx - 4))
+                    if len(sector.objects) > 5:
+                        desc_lines.append(f"  ...and {len(sector.objects) - 5} more")
             else:
                 desc_lines = ["No sector data"]
 
-            # Add ambient message if available
+            # Add ambient message after the sector/object description
             ambient_msg = getattr(game, "current_ambient_message", None)
             if ambient_msg:
                 desc_lines.append("")
