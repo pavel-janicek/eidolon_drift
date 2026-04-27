@@ -5,7 +5,7 @@ from eidolon.io.description_renderer import DescriptionRenderer
 from eidolon.io.map_renderer import MapRenderer
 from eidolon.io.status_renderer import StatusRenderer
 from eidolon.world.map import Map
-from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME
+from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME, GAME_VERSION
 
 MIN_MAP_W = MIN_MAP_WIDTH if 'MIN_MAP_WIDTH' in globals() else 10
 MIN_MAP_H = MIN_MAP_HEIGHT if 'MIN_MAP_HEIGHT' in globals() else 5
@@ -105,11 +105,12 @@ class OutputRenderer:
 
     def _layout(self):
         maxy, maxx = self.stdscr.getmaxyx()
+        header_h = 1
         status_h = 3
         msg_h = max(4, maxy // 5)
 
         # dostupná výška pro mapu a popis
-        avail_h = maxy - status_h - msg_h - 4
+        avail_h = maxy - header_h - status_h - msg_h - 4
         if avail_h < MIN_MAP_HEIGHT:
             avail_h = MIN_MAP_HEIGHT
 
@@ -138,9 +139,9 @@ class OutputRenderer:
             desc_w = min(preferred_desc_w, maxx - map_w - 6)
             desc_h = avail_h
             desc_x = 1 + map_w + 2
-            desc_y = status_h
+            desc_y = header_h + status_h
             map_x = 1
-            map_y = status_h
+            map_y = header_h + status_h
             map_h = avail_h
         else:
             # popis pod mapou
@@ -149,16 +150,16 @@ class OutputRenderer:
             map_w = MIN_MAP_WIDTH
             map_h = avail_h
             map_x = 1
-            map_y = status_h
+            map_y = header_h + status_h
             desc_w = max(20, maxx - 4)
-            desc_h = max(4, (maxy - status_h - msg_h - map_h - 6))
+            desc_h = max(4, (maxy - header_h - status_h - msg_h - map_h - 6))
             desc_x = 1
             desc_y = map_y + map_h + 1
 
         # bezpečné vytvoření/resize oken
         try:
             if self.map_win is None:
-                self.map_win = curses.newwin(map_h, map_w, map_y, map_x)
+                self.map_win = curses.newwin(map_h, map_w, map_y, maEIDOLON DRIFT - Incident Response Terminal "p_x)
             else:
                 self.map_win.resize(map_h, map_w)
                 self.map_win.mvwin(map_y, map_x)
@@ -169,11 +170,12 @@ class OutputRenderer:
                 self._map_win_err_emitted = True
 
         try:
+            status_y = header_h
             if self.status_win is None:
-                self.status_win = curses.newwin(status_h, maxx - 2, 0, 1)
+                self.status_win = curses.newwin(status_h, maxx - 2, status_y, 1)
             else:
                 self.status_win.resize(status_h, maxx - 2)
-                self.status_win.mvwin(0, 1)
+                self.status_win.mvwin(status_y, 1)
         except Exception as e:
             self.status_win = None
             if not getattr(self, "_status_win_err_emitted", False):
@@ -241,6 +243,7 @@ class OutputRenderer:
         maxy, maxx = self.stdscr.getmaxyx()
         title = " EIDOLON DRIFT - Incident Response Terminal "
         try:
+            title = f" EIDOLON DRIFT - Incident Response Terminal v{GAME_VERSION} "
             title_x = max(0, (maxx - len(title)) // 2)
             attr = curses.A_BOLD | (curses.color_pair(
                 1) if self.colors_available else 0)
