@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
-from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, SEED, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE
+from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, SEED, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE, SECTOR_TYPE_WEIGHTS
 from eidolon.generation.log_loader import load_logs
 
 def _find_data_dir():
@@ -166,15 +166,7 @@ class MapGenerator:
 
         # randomly assign sector types across the map
         # weights are normalized to sum to 1.0
-        sector_type_weights = {
-            "BRIDGE": 0.02,
-            "ENGINEERING": 0.03,
-            "CREW": 0.05,
-            "MEDBAY": 0.03,
-            "CARGO": 0.02,
-            "AIRLOCK": 0.01,
-            "EMPTY": 0.84
-        }
+        sector_type_weights = SECTOR_TYPE_WEIGHTS
         
         bridge_placed = False
         for y in range(h):
