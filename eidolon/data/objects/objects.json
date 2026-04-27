@@ -51,7 +51,7 @@
     "title": "Small Medkit",
     "description": "A compact medkit. Restores 25 health and 5 sanity.",
     "on_use": {"action": "heal", "amount": 25, "sanity": 5},
-    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.15, "ENGINEERING": 0.05},
+    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.15, "ENGINEERING": 0.05, "EMPTY": 0.05},
     "density_modifier": 1.0
   },
 
@@ -63,7 +63,7 @@
     "title": "Emergency Ration",
     "description": "A sealed packet of food and water. Restores a small amount of health.",
     "on_use": {"action": "heal", "amount": 10},
-    "spawn_weight": {"CARGO": 0.4, "CREW": 0.1},
+    "spawn_weight": {"CARGO": 0.4, "CREW": 0.1, "EMPTY": 0.05},
     "density_modifier": 1.0
   },
 
@@ -75,7 +75,7 @@
     "title": "Crew Photo",
     "description": "A worn photograph of smiling crew members. It brings a moment of calm.",
     "sanity_gain": 10,
-    "spawn_weight": {"CREW": 0.25, "EMPTY": 0.05},
+    "spawn_weight": {"CREW": 0.25, "EMPTY": 0.10},
     "density_modifier": 0.8
   },
 
@@ -87,7 +87,7 @@
     "title": "Lucky Charm",
     "description": "A small charm carried by a former crew member. It radiates faint comfort.",
     "sanity_gain": 7,
-    "spawn_weight": {"CREW": 0.15, "CARGO": 0.05},
+    "spawn_weight": {"CREW": 0.15, "CARGO": 0.05, "EMPTY": 0.08},
     "density_modifier": 0.7
   },
 
@@ -99,7 +99,7 @@
     "title": "Crew Dogtag",
     "description": "A metal dogtag engraved with a name. A reminder of humanity.",
     "sanity_gain": 5,
-    "spawn_weight": {"CREW": 0.2, "ENGINEERING": 0.05},
+    "spawn_weight": {"CREW": 0.2, "ENGINEERING": 0.05, "EMPTY": 0.08},
     "density_modifier": 0.9
   },
 
@@ -110,7 +110,7 @@
     "name": "toolbox",
     "title": "Toolbox",
     "description": "A small toolbox with basic tools.",
-    "spawn_weight": {"ENGINEERING": 0.25, "CARGO": 0.05, "CREW": 0.02},
+    "spawn_weight": {"ENGINEERING": 0.25, "CARGO": 0.05, "CREW": 0.02, "EMPTY": 0.05},
     "density_modifier": 1.1
   },
 
@@ -121,7 +121,7 @@
     "name": "battery",
     "title": "Battery Pack",
     "description": "A spare battery pack. Useful for powering small devices.",
-    "spawn_weight": {"ENGINEERING": 0.12, "CARGO": 0.08, "EMPTY": 0.02},
+    "spawn_weight": {"ENGINEERING": 0.12, "CARGO": 0.08, "EMPTY": 0.05},
     "density_modifier": 1.2
   },
 
@@ -132,10 +132,9 @@
     "name": "crate",
     "title": "Small Crate",
     "description": "A small sealed crate. Might contain supplies.",
-    "spawn_weight": {"CARGO": 0.5, "CREW": 0.05, "EMPTY": 0.02},
+    "spawn_weight": {"CARGO": 0.5, "CREW": 0.05, "EMPTY": 0.05},
     "density_modifier": 1.2
   },
-
 
   {
     "id": "anomaly_residue",
@@ -147,7 +146,7 @@
     "linger_damage": 2,
     "linger_event": "residue_nausea",
     "linger_message": "You feel nauseous from the residue.",
-    "spawn_weight": {"CARGO": 0.4, "CREW": 0.2, "EMPTY": 0.1},
+    "spawn_weight": {"CARGO": 0.4, "CREW": 0.2, "EMPTY": 0.15},
     "density_modifier": 0.9
   },
 
@@ -161,7 +160,7 @@
     "linger_damage": 1,
     "linger_event": "signal_headache",
     "linger_message": "A piercing headache builds as the signal pulses.",
-    "spawn_weight": {"ENGINEERING": 0.3, "EMPTY": 0.15},
+    "spawn_weight": {"ENGINEERING": 0.3, "EMPTY": 0.20},
     "density_modifier": 0.8
   },
 
@@ -176,7 +175,7 @@
     "linger_sanity": 5,
     "linger_event": "spore_exposure",
     "linger_message": "The spores bite at your lungs and mind.",
-    "spawn_weight": {"MEDBAY": 0.14, "CREW": 0.15, "EMPTY": 0.05},
+    "spawn_weight": {"MEDBAY": 0.14, "CREW": 0.15, "EMPTY": 0.10},
     "density_modifier": 0.7
   },
 
@@ -190,10 +189,9 @@
     "linger_sanity": 8,
     "linger_event": "void_whispers",
     "linger_message": "Whispers echo in your mind...",
-    "spawn_weight": {"EMPTY": 0.12, "CREW": 0.05},
+    "spawn_weight": {"EMPTY": 0.20, "CREW": 0.05},
     "density_modifier": 0.6
   },
-
 
 
   {
@@ -205,7 +203,7 @@
     "description": "A personal log terminal. Use 'inspect' to read.",
     "content_template": "Log entry: {text}",
     "fragmented_chance": 0.35,
-    "spawn_weight": {"BRIDGE": 0.8, "CREW": 0.5, "ENGINEERING": 0.35, "CARGO": 0.1},
+    "spawn_weight": {"BRIDGE": 0.8, "CREW": 0.5, "ENGINEERING": 0.35, "CARGO": 0.1, "EMPTY": 0.05},
     "density_modifier": 1.1
   },
 
@@ -218,9 +216,10 @@
     "description": "A medical log terminal. Use 'inspect' to read.",
     "content_template": "Medical - {text}",
     "fragmented_chance": 0.25,
-    "spawn_weight": {"MEDBAY": 0.9, "CREW": 0.3, "ENGINEERING": 0.15, "CARGO": 0.1},
+    "spawn_weight": {"MEDBAY": 0.9, "CREW": 0.3, "ENGINEERING": 0.15, "CARGO": 0.1, "EMPTY": 0.03},
     "density_modifier": 1.0
   },
+
 
 
   {
@@ -230,7 +229,7 @@
     "name": "debris",
     "title": "Scattered Debris",
     "description": "Bits of broken equipment and loose panels.",
-    "spawn_weight": {"EMPTY": 0.15, "CREW": 0.05, "CARGO": 0.08, "ENGINEERING": 0.06},
+    "spawn_weight": {"EMPTY": 0.20, "CREW": 0.05, "CARGO": 0.08, "ENGINEERING": 0.06},
     "density_modifier": 1.4
   },
 
