@@ -21,7 +21,7 @@ def handle_command(game, raw_cmd: str) -> str:
         return "Quitting session..."
 
     if verb in ("help", "?"):
-        return _cmd_help()
+        return _cmd_help(game)
 
     if verb == "scan":
         return _cmd_scan(game)
@@ -74,7 +74,7 @@ def handle_command(game, raw_cmd: str) -> str:
     
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
 
-def _cmd_help():
+def _cmd_help(game):
     lines = [
         "Available commands:",
         "  scan               - run diagnostics on current sector",
@@ -88,7 +88,8 @@ def _cmd_help():
         "  help               - show this help",
         "  quit               - exit the session",
     ]
-    return "\n".join(lines)
+    for line in lines:
+        game.push_message(line)
 
 def _cmd_scan(game):
     sector = game.map.get_sector(game.player.x, game.player.y)
