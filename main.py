@@ -33,6 +33,7 @@ except ImportError:
             KEY_PPAGE = 339
             KEY_HOME = 262
             KEY_END = 360
+            is_mock = True
 
             @staticmethod
             def has_colors():
@@ -304,7 +305,7 @@ def _run(stdscr):
 def main():
     try:
         # Check if we have real curses or mock curses
-        if hasattr(curses, 'wrapper') and 'MockCurses' not in str(type(curses.wrapper)):
+        if hasattr(curses, 'wrapper') and not getattr(curses, 'is_mock', False):
             # Real curses available
             curses.wrapper(_run)
         else:
