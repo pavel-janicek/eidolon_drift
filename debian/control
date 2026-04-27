@@ -1,0 +1,26 @@
+Source: eidolon-drift
+Section: games
+Priority: optional
+Maintainer: Vítězslav Dvořák <info@vitexsoftware.cz>
+Build-Depends:
+ debhelper-compat (= 13),
+Standards-Version: 4.7.0
+Homepage: https://github.com/CyberVitexus/eidolon-drift
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/CyberVitexus/eidolon-drift.git
+Vcs-Browser: https://github.com/CyberVitexus/eidolon-drift
+
+Package: eidolon-drift
+Architecture: all
+Depends:
+ ${misc:Depends},
+ python3 (>= 3.6),
+Description: terminal-based incident response space horror game
+ Eidolon Drift is a curses-based adventure game in which the player takes
+ the role of an incident responder aboard a distressed spaceship. Navigate
+ through the vessel, reach the Command Module, and escape via the emergency
+ pod while managing a deteriorating sanity level.
+ .
+ Features procedural map generation, a sanity system that shrinks the
+ visible field of view, atmospheric ambient messages, and multiple colour
+ themes (dark, retro, high-contrast).

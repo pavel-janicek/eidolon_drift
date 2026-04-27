@@ -1,0 +1,93 @@
+.TH EIDOLON\-DRIFT 6 "2026-04-27" "0.9.5" "Games"
+.SH NAME
+eidolon\-drift \- terminal\-based incident response space horror game
+.SH SYNOPSIS
+.B eidolon\-drift
+.SH DESCRIPTION
+.B Eidolon Drift
+is a curses\-based adventure game in which the player takes the role of an
+incident responder aboard a distressed spaceship.
+Navigate through the vessel, reach the Command Module, and escape via the
+emergency pod while managing a deteriorating sanity level.
+.PP
+The game features procedural map generation, a sanity system that shrinks
+the visible field of view, atmospheric ambient messages, and multiple colour
+themes.
+.SH CONTROLS
+.SS Movement
+.TP
+.BR w / s / a / d
+Move up, down, left, right.
+.TP
+Arrow keys
+Alternative movement.
+.TP
+.B q
+Quit the game.
+.SS In\-game commands
+Type a command at the prompt and press Enter.
+.TP
+.B scan
+Run diagnostics on the current sector and list environmental readings
+and detected objects.
+.TP
+.B logs
+List readable log entries found in the current sector.
+.TP
+.BI inspect " <object>"
+Read the details of an object or log in the current sector.
+.TP
+.BI decrypt " <object>"
+Attempt to decrypt a fragmented data object.
+.TP
+.B map
+Print a text snapshot of the ship layout.
+.TP
+.B status
+Display current health, sanity level, and inventory.
+.TP
+.BI use " <object>"
+Use an item from inventory or the current sector.
+.TP
+.BI theme " <name>"
+Switch the colour theme.
+Available themes:
+.BR dark ", " retro ", " high_contrast .
+.TP
+.B help
+Show the in\-game command reference.
+.TP
+.B quit
+Exit the session.
+.SH GAME MECHANICS
+.SS Sanity
+Sanity starts at 100 and decreases over time and in hazardous sectors.
+As sanity falls the visible radius shrinks to a minimum of 20 % of its
+original size.
+Medbay sectors restore sanity.
+.SS Objectives
+.IP \(bu 4
+Explore the ship and navigate to the Command Module.
+.IP \(bu 4
+Activate the emergency pod to complete the mission.
+.IP \(bu 4
+Avoid sanity loss from anomaly sectors.
+.SH FILES
+.TP
+.I /usr/share/games/eidolon\-drift/
+Game source and data files.
+.TP
+.I ~/crash.log
+Crash report written to the working directory when an unhandled exception
+occurs.
+.SH BUGS
+Report bugs at
+.UR https://github.com/CyberVitexus/eidolon\-drift/issues
+.UE .
+.SH AUTHOR
+Vítězslav Dvořák
+.MT info@vitexsoftware.cz
+.ME
+.SH SEE ALSO
+.BR nethack (6),
+.BR python3 (1)

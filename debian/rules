@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+
+override_dh_auto_install:
+	install -d debian/eidolon-drift/usr/share/games/eidolon-drift
+	cp main.py debian/eidolon-drift/usr/share/games/eidolon-drift/
+	cp -r eidolon debian/eidolon-drift/usr/share/games/eidolon-drift/
+	find debian/eidolon-drift -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null; true
+	find debian/eidolon-drift -name '*.pyc' -delete 2>/dev/null; true
+	install -d debian/eidolon-drift/usr/share/games/eidolon-drift/data
+	install -m 644 eidolon/data/ambient_messages.json \
+		debian/eidolon-drift/usr/share/games/eidolon-drift/data/
+	install -d debian/eidolon-drift/usr/games
+	printf '#!/bin/sh\nexec python3 /usr/share/games/eidolon-drift/main.py "$$@"\n' \
+		> debian/eidolon-drift/usr/games/eidolon-drift
+	chmod 755 debian/eidolon-drift/usr/games/eidolon-drift
+	install -d debian/eidolon-drift/usr/share/metainfo
+	install -m 644 debian/cz.vitexsoftware.EidolonDrift.metainfo.xml \
+		debian/eidolon-drift/usr/share/metainfo/

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>cz.vitexsoftware.EidolonDrift</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Eidolon Drift</name>
+  <summary>Terminal-based incident response space horror game</summary>
+
+  <description>
+    <p>
+      Eidolon Drift is a curses-based adventure game in which you play as an
+      incident responder aboard a distressed spaceship. Your mission: navigate
+      through the vessel, reach the Command Module, and escape using the
+      emergency pod.
+    </p>
+    <p>
+      As your sanity deteriorates, your field of vision shrinks — creating
+      tense, atmospheric exploration with procedurally generated ship layouts
+      each playthrough.
+    </p>
+    <ul>
+      <li>Procedural map generation for unique playthroughs</li>
+      <li>Sanity system that affects vision range</li>
+      <li>Atmospheric ambient messages and sector events</li>
+      <li>Multiple colour themes: dark, retro, high-contrast</li>
+      <li>In-game command system: scan, inspect, decrypt, use, and more</li>
+    </ul>
+  </description>
+
+  <url type="homepage">https://github.com/CyberVitexus/eidolon-drift</url>
+  <url type="bugtracker">https://github.com/CyberVitexus/eidolon-drift/issues</url>
+
+  <categories>
+    <category>Game</category>
+    <category>AdventureGame</category>
+  </categories>
+
+  <keywords>
+    <keyword>terminal</keyword>
+    <keyword>curses</keyword>
+    <keyword>roguelike</keyword>
+    <keyword>space</keyword>
+    <keyword>horror</keyword>
+    <keyword>adventure</keyword>
+    <keyword>text</keyword>
+  </keywords>
+
+  <provides>
+    <binary>eidolon-drift</binary>
+  </provides>
+
+  <releases>
+    <release version="0.9.5" date="2026-04-27">
+      <description>
+        <p>Fix ambient message rendering and improve Windows compatibility.</p>
+      </description>
+    </release>
+    <release version="0.9.0" date="2025-01-01">
+      <description>
+        <p>Initial public release.</p>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-cartoon">none</content_attribute>
+    <content_attribute id="violence-realistic">none</content_attribute>
+  </content_rating>
+</component>
