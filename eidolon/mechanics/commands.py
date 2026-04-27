@@ -40,13 +40,6 @@ def handle_command(game, raw_cmd: str) -> str:
             return "Usage: decrypt <object>"
         target = " ".join(args)
         return _cmd_decrypt(game, target)
-
-    if verb == "map":
-        # renderer already shows minimap; return full map text snapshot
-        return _cmd_map(game)
-
-    if verb == "status":
-        return _cmd_status(game)
     
     if verb == "inspect-all":
         sector = game.map.get_sector(game.player.x, game.player.y)
@@ -65,12 +58,7 @@ def handle_command(game, raw_cmd: str) -> str:
             return "No renderer available to apply a theme."
         ok = game.renderer.apply_theme(name)
         return f"Theme set to {name}" if ok else f"Unknown theme '{name}'. Available: {', '.join(game.renderer.THEMES.keys())}"
-    # v eidolon/mechanics/commands.py
-    if verb == "dump-messages":
-        return "\n".join(game.messages[-50:])
-    if cmd == "debug_emit_ambient":
-        game.debug_emit_ambient()
-        return
+
     
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
 
@@ -81,9 +69,7 @@ def _cmd_help(game):
         "  logs               - list readable logs in this sector",
         "  inspect <object>   - inspect an object in the sector",
         "  decrypt <object>   - attempt to decrypt a data fragment",
-        "  map                - show a textual snapshot of the ship map",
         "  use <object>       - use an item from your inventory or the sector",
-        "  status             - show your status (health, sanity, inventory)",
         "  theme <name>        - change display theme (e.g. theme dark)",
         "  help               - show this help",
         "  quit               - exit the session",
@@ -365,30 +351,6 @@ def _cmd_decrypt(game, target):
                     return "Decryption failed. Neural feedback caused minor disorientation."
     return f"No encrypted object named '{target}' found here."
 
-def _cmd_map(game):
-    # produce a textual snapshot of the map
-    lines = []
-    m = game.map
-    for y in range(m.height):
-        row = ""
-        for x in range(m.width):
-            if game.player.x == x and game.player.y == y:
-                row += "@"
-            else:
-                row += m.get_tile_char(x, y)
-        lines.append(row)
-    return "Ship map snapshot:\n" + "\n".join(lines)
-
-def _cmd_status(game):
-    p = game.player
-    inv = ", ".join(p.inventory) if p.inventory else "empty"
-    lines = [
-        f"Health: {p.health}",
-        f"Sanity: {p.sanity}",
-        f"Inventory: {inv}",
-        f"Position: ({p.x}, {p.y})",
-    ]
-    return "\n".join(lines)
 
 def _cmd_use(game, target):
     target_norm = _normalize(target)
