@@ -159,7 +159,7 @@ class OutputRenderer:
         # bezpečné vytvoření/resize oken
         try:
             if self.map_win is None:
-                self.map_win = curses.newwin(map_h, map_w, map_y, maEIDOLON DRIFT - Incident Response Terminal "p_x)
+                self.map_win = curses.newwin(map_h, map_w, map_y, map_x)
             else:
                 self.map_win.resize(map_h, map_w)
                 self.map_win.mvwin(map_y, map_x)

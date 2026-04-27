@@ -46,7 +46,7 @@ The game features atmospheric horror elements with sanity mechanics that affect 
 ## Installation
 
 ### Prerequisites
-- Python 3.6+
+- Python 3.6+ (tested on 3.6-3.13)
 - Terminal with curses support (Linux/macOS/Windows WSL)
 
 ### Setup

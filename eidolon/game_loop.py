@@ -1,6 +1,5 @@
 # eidolon/game_loop.py
 import curses
-from importlib.resources import path
 from pathlib import Path
 import random
 from eidolon.generation.map_generator import MapGenerator
