@@ -23,5 +23,30 @@
     "id": "log_05",
     "title": "Medical Note",
     "text": "Supplies are dwindling. Medbay is rationing analgesics. If this continues, morale will drop further."
+  },
+  {
+    "id": "log_06",
+    "title": "Engineering Report",
+    "text": "The anomaly in the engine room is growing. It's emitting a low hum and causing power fluctuations. We can't get close to it."
+  },
+  {
+    "id": "log_07",
+    "title": "Crew Log 5-4-2",
+    "text": "The ship's AI is acting erratically. It keeps repeating the same message about 'the void'. We're not sure if it's a glitch or something else."
+  },
+  {
+    "id": "log_08",
+    "title": "Personal Log - S. Lee",
+    "text": "I found something in the cargo bay. A strange object covered in residue. It feels like it's pulsing. I don't want to touch it again."
+  },
+  {
+    "id": "log_09",
+    "title": "Bridge Log 2",
+    "text": "The anomaly is affecting our navigation systems. We can't plot a course out of here. We're drifting aimlessly."
+  },
+  {
+    "id": "log_10",
+    "title": "Medical Note - Dr. Kline",
+    "text": "Several crew members are showing symptoms of nausea and headaches. I suspect it's related to the anomaly, but I can't be sure without proper equipment."
   }
 ]

@@ -34,5 +34,13 @@
     "death_message": "The spores overwhelm you. You collapse and never wake up.",
     "repeatable": true,
     "cooldown": 5
+  },
+  {
+    "id": "anomaly_echo",
+    "type": "echo_event",
+    "message": "A haunting echo reverberates through the ship.",
+    "repeatable": true,
+    "cooldown": 6,
+    "sanity_loss": 2
   }
 ]
