@@ -237,5 +237,120 @@
     "id": "config_sector_types",
     "kind": "config",
     "sector_types": ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
+  },
+  
+  {
+  "id": "env_bridge",
+  "kind": "environment",
+  "sector_type": "BRIDGE",
+  "environment": {
+    "lighting": "dim emergency lighting",
+    "noise": "soft hum of failing systems",
+    "air": "stale and metallic",
+    "radiation": "low",
+    "notes": [
+      "Flickering holographic displays cast shifting shadows.",
+      "A faint alarm tone repeats irregularly.",
+      "Loose cables sway gently as if something brushed past."
+    ]
   }
+},
+{
+  "id": "env_engineering",
+  "kind": "environment",
+  "sector_type": "ENGINEERING",
+  "environment": {
+    "lighting": "harsh industrial lights",
+    "noise": "deep mechanical rumble",
+    "air": "warm and oily",
+    "radiation": "medium",
+    "notes": [
+      "Pipes vibrate with irregular pulses.",
+      "A coolant leak hisses somewhere nearby.",
+      "A distant clang echoes through the machinery."
+    ]
+  }
+},
+{
+  "id": "env_crew",
+  "kind": "environment",
+  "sector_type": "CREW",
+  "environment": {
+    "lighting": "soft cabin lights",
+    "noise": "quiet, with occasional creaks",
+    "air": "recycled and slightly warm",
+    "radiation": "none",
+    "notes": [
+      "A faint smell of detergent lingers.",
+      "Personal belongings lie scattered as if abandoned suddenly.",
+      "A ventilation fan rattles intermittently."
+    ]
+  }
+},
+{
+  "id": "env_medbay",
+  "kind": "environment",
+  "sector_type": "MEDBAY",
+  "environment": {
+    "lighting": "clinical white lights",
+    "noise": "soft beeping from inactive equipment",
+    "air": "sterile and cold",
+    "radiation": "none",
+    "notes": [
+      "A medical scanner flickers with corrupted data.",
+      "A tray of instruments lies overturned.",
+      "A faint antiseptic smell hangs in the air."
+    ]
+  }
+},
+{
+  "id": "env_cargo",
+  "kind": "environment",
+  "sector_type": "CARGO",
+  "environment": {
+    "lighting": "low industrial lamps",
+    "noise": "distant thuds from shifting containers",
+    "air": "dusty and dry",
+    "radiation": "low",
+    "notes": [
+      "Loose straps sway gently.",
+      "A crate is dented from the inside.",
+      "A cold draft flows from an unknown source."
+    ]
+  }
+},
+{
+  "id": "env_airlock",
+  "kind": "environment",
+  "sector_type": "AIRLOCK",
+  "environment": {
+    "lighting": "bright overhead lamps",
+    "noise": "pressurization pumps cycling",
+    "air": "thin and cold",
+    "radiation": "none",
+    "notes": [
+      "A suit visor is cracked.",
+      "Warning lights blink in irregular patterns.",
+      "A faint scraping sound comes from the outer door."
+    ]
+  }
+},
+{
+  "id": "env_empty",
+  "kind": "environment",
+  "sector_type": "EMPTY",
+  "environment": {
+    "lighting": "flickering corridor lights",
+    "noise": "distant echoes and metallic groans",
+    "air": "cold and still",
+    "radiation": "none",
+    "notes": [
+      "Shadows seem to move at the edge of vision.",
+      "A faint vibration runs through the floor.",
+      "Something drips rhythmically in the distance.",
+      "The silence feels unnaturally heavy."
+    ]
+  }
+}
+
 ]

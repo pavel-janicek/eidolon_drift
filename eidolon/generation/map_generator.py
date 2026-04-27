@@ -39,6 +39,8 @@ def _load_templates(data_dir):
                         config.update(item)
                     elif kind in ("template", "description"):
                         templates.append(item)
+                    elif kind in ("template", "description", "environment"):
+                        templates.append(item)    
                         if "id" in item:
                             by_id[item["id"]] = item
     except Exception as e:
@@ -84,6 +86,12 @@ class MapGenerator:
         print(f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json", file=sys.stderr)
 
         self.sector_types = self.config.get("sector_types", ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"])
+        self.environment_map = {
+            t["sector_type"]: t["environment"]
+            for t in self.templates
+            if isinstance(t, dict) and t.get("kind") == "environment"
+        }
+
 
     # --- helper methods for region placement ---------------------------------
     def _rects_overlap(self, a, b, gap=0):
@@ -269,6 +277,12 @@ class MapGenerator:
         return Map(w, h, grid)
 
     def _random_environment(self, sector_type):
+        # JSON-based environment
+        env = self.environment_map.get(sector_type)
+        if isinstance(env, dict):
+            return env
+
+        # fallback: původní string environment převedený na dict
         base_env = {
             "BRIDGE": "Control panels and navigation displays dominate the room.",
             "ENGINEERING": "Pipes and cables snake across the walls and ceiling.",
@@ -278,17 +292,9 @@ class MapGenerator:
             "AIRLOCK": "Pressure suits and emergency equipment are stored here.",
             "EMPTY": "Bare walls and minimal lighting characterize this area."
         }
-        env = base_env.get(sector_type, "The environment is sparse and functional.")
-        variations = [
-            " The air is cool and still.",
-            " A faint vibration runs through the floor.",
-            " Emergency lighting casts an eerie glow.",
-            " The sound of distant alarms echoes faintly.",
-            " Scattered debris litters the floor."
-        ]
-        if self.rng.random() < 0.3:
-            env += self.rng.choice(variations)
-        return env
+        text = base_env.get(sector_type, "Sparse and functional.")
+        return {"description": text}
+
 
     def _choose_templates_for_sector(self, sector_type):
         choices = []

@@ -94,20 +94,23 @@ def _cmd_help(game):
 def _cmd_scan(game):
     sector = game.map.get_sector(game.player.x, game.player.y)
     if sector is None:
-        return "Scan: no sector data."
+        return ["Scan: no sector data."]
+
     env = sector.environment or {}
+
     lines = []
     lines.append(f"Scan results for {sector.name}:")
+
     # environment keys
-    if env:
+    if isinstance(env, dict) and env:
         for k, v in env.items():
             lines.append(f"  {k}: {v}")
     else:
         lines.append("  No special environmental readings.")
+
     # objects summary
     if sector.objects:
         lines.append(f"  Objects detected: {len(sector.objects)}")
-        # show types if objects are dicts or strings
         sample = []
         for o in sector.objects[:5]:
             if isinstance(o, dict):
@@ -117,10 +120,14 @@ def _cmd_scan(game):
         lines.append("  " + ", ".join(sample))
     else:
         lines.append("  No objects detected.")
+
     # random noise / hint
     if random.random() < 0.12:
         lines.append("  [ANOMALY] faint electromagnetic interference detected.")
-    return "\n".join(lines)
+
+    for line in lines:
+        game.push_message(line)
+
 
 def _cmd_logs(game):
     sector = game.map.get_sector(game.player.x, game.player.y)
