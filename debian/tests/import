@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+cd /usr/share/games/eidolon-drift
+python3 - <<'EOF'
+import sys
+sys.path.insert(0, '.')
+import eidolon
+from eidolon.config import GAME_VERSION
+print('OK: eidolon-drift', GAME_VERSION)
+EOF

@@ -1,0 +1,8 @@
+eidolon-drift (0.9.5) unstable; urgency=medium
+
+  * Initial Debian packaging.
+  * Add manpage (man6) and AppStream metainfo.
+  * Fix hardcoded developer path in ambient message loader; use
+    package-relative Path(__file__).parent/data candidate instead.
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Mon, 27 Apr 2026 13:29:43 +0200

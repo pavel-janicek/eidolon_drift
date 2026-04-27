@@ -132,3 +132,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 eidolon/io/__pycache__/output_renderer.cpython-312.pyc
+debian/debhelper-build-stamp
+debian/.debhelper/
+debian/eidolon-drift/
+debian/files

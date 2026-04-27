@@ -439,14 +439,12 @@ class Game:
         candidates = []
         if path:
             candidates.append(Path(path))
-        # project-specific absolute path you mentioned
-        candidates.append(Path("/home/janipav/Documents/sangha/eidoloon_drift/eidolon/data/ambient_messages.json"))
-        # cwd/data
-        candidates.append(Path.cwd() / "data" / "ambient_messages.json")
-        # repo relative: two levels up from this file (adjust if your layout differs)
-        candidates.append(Path(__file__).resolve().parents[2] / "data" / "ambient_messages.json")
-        # package data folder next to module
+        # data/ sibling of the eidolon package directory (installed layout)
+        candidates.append(Path(__file__).resolve().parent / "data" / "ambient_messages.json")
+        # one level above the package (source tree / legacy installed layout)
         candidates.append(Path(__file__).resolve().parent.parent / "data" / "ambient_messages.json")
+        # cwd/data (fallback for running from project root)
+        candidates.append(Path.cwd() / "data" / "ambient_messages.json")
 
         tried = []
         for p in candidates:
