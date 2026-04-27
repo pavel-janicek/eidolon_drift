@@ -1,6 +1,65 @@
+# eidolon/io/description_renderer.py
+# Cross-platform curses import
+try:
+    import curses
+except ImportError:
+    try:
+        # Try windows-curses for Windows
+        import windows_curses as curses
+    except ImportError:
+        # Fallback: create a mock curses module for basic functionality
+        class MockCurses:
+            COLOR_CYAN = 1
+            COLOR_YELLOW = 2
+            COLOR_GREEN = 3
+            COLOR_RED = 4
+            COLOR_MAGENTA = 5
+            COLOR_WHITE = 7
+            COLOR_BLACK = 0
+            A_BOLD = 1
+            A_NORMAL = 0
+            A_REVERSE = 2
+            KEY_UP = 259
+            KEY_DOWN = 258
+            KEY_LEFT = 260
+            KEY_RIGHT = 261
+            KEY_BACKSPACE = 263
+            KEY_ENTER = 10
+            KEY_NPAGE = 338
+            KEY_PPAGE = 339
+            KEY_HOME = 262
+            KEY_END = 360
 
-import curses
+            @staticmethod
+            def has_colors():
+                return False
 
+            @staticmethod
+            def start_color():
+                pass
+
+            @staticmethod
+            def use_default_colors():
+                pass
+
+            @staticmethod
+            def init_pair(*args):
+                pass
+
+            @staticmethod
+            def color_pair(n):
+                return 0
+
+            @staticmethod
+            def curs_set(n):
+                pass
+
+            @staticmethod
+            def wrapper(func, *args):
+                return func(*args)
+
+        curses = MockCurses()
+import textwrap
 
 
 class DescriptionRenderer:
@@ -15,132 +74,46 @@ class DescriptionRenderer:
         if not getattr(self.output_renderer, "desc_win", None):
             return
 
-        try:
-            maxy, maxx = self.output_renderer.desc_win.getmaxyx()
-        except Exception:
-            return
+        win = self.output_renderer.desc_win
+        game = self.output_renderer.game
 
-        # vyčistit okno a vykreslit rámeček
         try:
-            self.output_renderer.desc_win.erase()
-            # pokud je dost místa, vykreslíme box, a posuneme obsah o 1 řádek/1 sloupec
-            if maxy > 2 and maxx > 2:
-                try:
-                    self.output_renderer.desc_win.box()
-                    inner_y = 1
-                    inner_x = 1
-                    inner_h = maxy - 2
-                    inner_w = maxx - 2
-                except Exception:
-                    inner_y = 0
-                    inner_x = 0
-                    inner_h = maxy
-                    inner_w = maxx
+            if win:
+                win.erase()
+                win.box()
+
+            maxy, maxx = win.getmaxyx()
+            if maxy < 3 or maxx < 3:
+                return
+
+            # Get current sector description
+            sector = game.map.get_sector(game.player.x, game.player.y) if game.map else None
+            if sector:
+                desc_lines = self.output_renderer.wrap_text(sector.description or "Unknown sector", maxx - 4)
             else:
-                inner_y = 0
-                inner_x = 0
-                inner_h = maxy
-                inner_w = maxx
-        except Exception:
-            inner_y = 0
-            inner_x = 0
-            inner_h = maxy
-            inner_w = maxx
+                desc_lines = ["No sector data"]
 
-        # získat aktuální sektor
-        try:
-            sector = self.output_renderer.game.map.get_sector(self.output_renderer.game.player.x, self.output_renderer.game.player.y)
-        except Exception:
-            sector = None
+            # Add ambient message if available
+            ambient_msg = getattr(game, "ambient_messages", None)
+            if ambient_msg and len(ambient_msg) > 0:
+                # Choose message using game RNG for reproducibility
+                rng = getattr(game, "rng", None)
+                if rng:
+                    msg = rng.choice(ambient_msg)
+                else:
+                    msg = ambient_msg[0]
+                desc_lines.append("")
+                desc_lines.append("Ambient:")
+                desc_lines.extend(self.output_renderer.wrap_text(msg, maxx - 4))
 
-        y = inner_y
-        x = inner_x
-        # název sektoru (tučně)
-        title = getattr(sector, "name", "Unknown") if sector else "Unknown"
-        try:
-            self.output_renderer.desc_win.addstr(y, x, title[:inner_w], curses.A_BOLD)
-        except Exception:
-            try:
-                self.output_renderer.desc_win.addstr(y, x, title[:inner_w])
-            except Exception:
-                pass
-        y += 1
-
-        # popis sektoru (zalomení)
-        desc = getattr(sector, "description", "") if sector else ""
-        for line in self.output_renderer.wrap_text(desc, inner_w):
-            if y >= inner_y + inner_h:
-                break
-            try:
-                self.output_renderer.desc_win.addstr(y, x, line[:inner_w])
-            except Exception:
-                pass
-            y += 1
-
-        # seznam objektů
-        objs = getattr(sector, "objects", []) if sector else []
-        if objs and y < inner_y + inner_h:
-            # prázdný řádek pokud je místo
-            if y < inner_y + inner_h:
-                y += 1
-            if y < inner_y + inner_h:
+            # Render lines
+            for i, line in enumerate(desc_lines[:maxy - 2]):
                 try:
-                    self.output_renderer.desc_win.addstr(y, x, "Objects:", curses.A_UNDERLINE)
+                    win.addstr(1 + i, 2, line[:maxx - 4])
                 except Exception:
-                    try:
-                        self.output_renderer.desc_win.addstr(y, x, "Objects:")
-                    except Exception:
-                        pass
-                y += 1
-            for obj in objs:
-                if y >= inner_y + inner_h:
-                    break
-                title = obj.get("title", obj.get("name", "object")) if isinstance(obj, dict) else str(obj)
-                try:
-                    style = curses.A_NORMAL
-                    if self.output_renderer.colors_available and isinstance(obj, dict):
-                        if obj.get("type") == "item":
-                            style = curses.color_pair(30)
+                    continue
 
-                    self.output_renderer.desc_win.addstr(y, x, f"- {title}"[:inner_w], style)
-                except Exception:
-                    pass
-                y += 1
-
-        # ambientní blok (zobrazí se krátce)
-        amb_msg = getattr(self.output_renderer.game, "last_ambient_message", None)
-        if amb_msg and y < inner_y + inner_h:
-            # rezervovat prázdný řádek pokud je místo
-            if y < inner_y + inner_h:
-                y += 1
-            if y < inner_y + inner_h:
-                try:
-                    self.output_renderer.desc_win.addstr(y, x, "Ambient:", curses.A_BOLD | curses.A_UNDERLINE)
-                except Exception:
-                    try:
-                        self.output_renderer.desc_win.addstr(y, x, "Ambient:")
-                    except Exception:
-                        pass
-                y += 1
-            # samotná zpráva (zalomení) s jemným stylem
-            style = curses.A_DIM
-            for line in self.output_renderer.wrap_text(amb_msg, inner_w):
-                if y >= inner_y + inner_h:
-                    break
-                try:
-                    self.output_renderer.desc_win.addstr(y, x, line[:inner_w], style)
-                except Exception:
-                    try:
-                        self.output_renderer.desc_win.addstr(y, x, line[:inner_w])
-                    except Exception:
-                        pass
-                y += 1
-
-        # noutrefresh/refresh podle render loopu
-        try:
-            self.output_renderer.desc_win.noutrefresh()
-        except Exception:
-            try:
-                self.output_renderer.desc_win.refresh()
-            except Exception:
-                pass
+        except Exception as e:
+            if not getattr(self.output_renderer, "_desc_render_err_emitted", False):
+                game.push_message(f"[debug] description render error: {e}")
+                self.output_renderer._desc_render_err_emitted = True

@@ -57,9 +57,21 @@ The game features atmospheric horror elements with sanity mechanics that affect 
    python main.py
    ```
 
+### Windows Users
+If you encounter curses-related errors on Windows:
+
+1. **Install windows-curses** (recommended):
+   ```bash
+   pip install windows-curses
+   ```
+
+2. **Alternative**: The game includes fallback text mode that works without curses:
+   - Run normally: `python main.py` (will auto-detect and use text mode if curses unavailable)
+   - Text mode provides basic command-line interface
+
 ### Dependencies
 The game uses only standard Python libraries:
-- `curses` (built-in on Unix systems)
+- `curses` (built-in on Unix systems, install `windows-curses` on Windows)
 - `pathlib` (Python 3.4+)
 - `random` (built-in)
 - `json` (built-in)

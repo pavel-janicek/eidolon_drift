@@ -1,5 +1,65 @@
 # eidolon/game_loop.py
-import curses
+# Cross-platform curses import
+try:
+    import curses
+except ImportError:
+    try:
+        # Try windows-curses for Windows
+        import windows_curses as curses
+    except ImportError:
+        # Fallback: create a mock curses module for basic functionality
+        import sys
+        class MockCurses:
+            COLOR_CYAN = 1
+            COLOR_YELLOW = 2
+            COLOR_GREEN = 3
+            COLOR_RED = 4
+            COLOR_MAGENTA = 5
+            COLOR_WHITE = 7
+            COLOR_BLACK = 0
+            A_BOLD = 1
+            A_NORMAL = 0
+            A_REVERSE = 2
+            KEY_UP = 259
+            KEY_DOWN = 258
+            KEY_LEFT = 260
+            KEY_RIGHT = 261
+            KEY_BACKSPACE = 263
+            KEY_ENTER = 10
+            KEY_NPAGE = 338
+            KEY_PPAGE = 339
+            KEY_HOME = 262
+            KEY_END = 360
+
+            @staticmethod
+            def has_colors():
+                return False
+
+            @staticmethod
+            def start_color():
+                pass
+
+            @staticmethod
+            def use_default_colors():
+                pass
+
+            @staticmethod
+            def init_pair(*args):
+                pass
+
+            @staticmethod
+            def color_pair(n):
+                return 0
+
+            @staticmethod
+            def curs_set(n):
+                pass
+
+            @staticmethod
+            def wrapper(func, *args):
+                return func(*args)
+
+        curses = MockCurses()
 from pathlib import Path
 import random
 from eidolon.generation.map_generator import MapGenerator

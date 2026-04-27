@@ -1,7 +1,73 @@
 # main.py
-import curses
 import traceback
 from pathlib import Path
+
+# Cross-platform curses import
+try:
+    import curses
+except ImportError:
+    try:
+        # Try windows-curses for Windows
+        import windows_curses as curses
+    except ImportError:
+        # Fallback: create a mock curses module
+        import sys
+        class MockCurses:
+            COLOR_CYAN = 1
+            COLOR_YELLOW = 2
+            COLOR_GREEN = 3
+            COLOR_RED = 4
+            COLOR_MAGENTA = 5
+            COLOR_WHITE = 7
+            COLOR_BLACK = 0
+            A_BOLD = 1
+            A_NORMAL = 0
+            A_REVERSE = 2
+            KEY_UP = 259
+            KEY_DOWN = 258
+            KEY_LEFT = 260
+            KEY_RIGHT = 261
+            KEY_BACKSPACE = 263
+            KEY_ENTER = 10
+            KEY_NPAGE = 338
+            KEY_PPAGE = 339
+            KEY_HOME = 262
+            KEY_END = 360
+
+            @staticmethod
+            def has_colors():
+                return False
+
+            @staticmethod
+            def start_color():
+                pass
+
+            @staticmethod
+            def use_default_colors():
+                pass
+
+            @staticmethod
+            def init_pair(*args):
+                pass
+
+            @staticmethod
+            def color_pair(n):
+                return 0
+
+            @staticmethod
+            def curs_set(n):
+                pass
+
+            @staticmethod
+            def wrapper(func, *args):
+                # For mock curses, just call the function directly
+                try:
+                    return func(None, *args)
+                except TypeError:
+                    return func(*args)
+
+        curses = MockCurses()
+        print("Warning: Curses not available. Using fallback text interface.", file=sys.stderr)
 
 from eidolon.game_loop import Game
 
@@ -237,7 +303,48 @@ def _run(stdscr):
 
 def main():
     try:
-        curses.wrapper(_run)
+        # Check if we have real curses or mock curses
+        if hasattr(curses, 'wrapper') and 'MockCurses' not in str(type(curses.wrapper)):
+            # Real curses available
+            curses.wrapper(_run)
+        else:
+            # Mock curses or no curses - run in text mode
+            try:
+                from eidolon.config import GAME_VERSION
+                version = GAME_VERSION
+            except:
+                version = "0.9.0"
+
+            print(f"EIDOLON DRIFT - Incident Response Terminal v{version}")
+            print("Running in text mode (curses not available)")
+            print("Use 'python main.py --text' for better text interface")
+            print()
+
+            # Create game without curses
+            game = Game()
+
+            # Simple text-based game loop
+            print("Welcome to Eidolon Drift!")
+            print("Type 'help' for commands, 'quit' to exit")
+            print()
+
+            while True:
+                try:
+                    cmd = input("> ").strip()
+                    if cmd.lower() in ('quit', 'q', 'exit'):
+                        break
+                    if cmd:
+                        result = game.handle_command(cmd)
+                        if result:
+                            print(result)
+                        # Print recent messages
+                        for msg in game.messages[-5:]:
+                            print(f"  {msg}")
+                except KeyboardInterrupt:
+                    break
+                except Exception as e:
+                    print(f"Error: {e}")
+
     except Exception as e:
         _safe_write_crash(e)
         print("Fatal error starting the game. See crash.log for details.")
