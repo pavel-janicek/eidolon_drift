@@ -286,7 +286,9 @@ class Game:
 
         except KeyboardInterrupt:
             self.awaiting_quit_confirm = True
-            self.push_message("Quit game? (y/n)")
+            self.run()
+        except Exception as e:
+            self.push_message(f"[debug] Game.run error: {e}")
 
 
 
@@ -485,12 +487,37 @@ class Game:
         self.push_message(msg)
 
     def _handle_quit_confirm(self):
-        ch = self.stdscr.getch()
-        if ch in (ord('y'), ord('Y')):
-            self.push_message("[debug] quitting game")
-            self.running = False
+         if not self.awaiting_quit_confirm:
+             self.awaiting_quit_confirm = True
+         self._show_quit_dialog()
+        
+    def _show_quit_dialog(self):
+        """
+        Vykreslí modální quit dialog doprostřed obrazovky.
+        Blokuje, dokud hráč nezmáčkne Y nebo N.
+        """
+        h, w = self.stdscr.getmaxyx()
+
+        dialog_w = 32
+        dialog_h = 5
+
+        x0 = (w - dialog_w) // 2
+        y0 = (h - dialog_h) // 2
+
+        win = curses.newwin(dialog_h, dialog_w, y0, x0)
+        win.border()
+
+        win.addstr(1, (dialog_w - len("Quit the game?")) // 2, "Quit the game?")
+        win.addstr(3, (dialog_w - len("[Y]es   [N]o")) // 2, "[Y]es   [N]o")
+
+        win.refresh()
+
+        while True:
+            ch = self.stdscr.getch()
+            if ch in (ord('y'), ord('Y')):
+                self.running = False
+                return
+            if ch in (ord('n'), ord('N')):
+                self.awaiting_quit_confirm = False
             return
-        if ch in (ord('n'), ord('N')):
-            self.push_message("Quit cancelled.")
-            self.awaiting_quit_confirm = False
-            return
+    

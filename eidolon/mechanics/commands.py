@@ -17,8 +17,9 @@ def handle_command(game, raw_cmd: str) -> str:
     args = parts[1:]
 
     if verb in ("quit", "exit"):
-        game.running = False
-        return "Quitting session..."
+        game.awaiting_quit_confirm = True
+        game._handle_quit_confirm()
+        return "Quit game? (y/n)"
 
     if verb in ("help", "?"):
         return _cmd_help(game)
