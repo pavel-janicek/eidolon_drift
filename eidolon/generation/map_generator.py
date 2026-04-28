@@ -263,6 +263,7 @@ class MapGenerator:
             if not hasattr(sec, "objects") or sec.objects is None:
                 sec.objects = []
             sec.objects.append({
+                "id": "escape-pod",
                 "type": "item",
                 "name": "escape-pod",
                 "title": "Escape Pod",
