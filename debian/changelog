@@ -1,4 +1,4 @@
-eidolon-drift (0.9.5) unstable; urgency=medium
+eidolon-drift (0.9.8) semi-stable; urgency=medium
 
   * Initial Debian packaging.
   * Add manpage (man6) and AppStream metainfo.
