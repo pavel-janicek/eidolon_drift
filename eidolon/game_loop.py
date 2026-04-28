@@ -163,6 +163,9 @@ class Game:
         )
         self.push_message("Type 'help' for commands. Use WASD to move.")
         self.awaiting_quit_confirm = False
+        # stav pro escape dialog
+        self.awaiting_escape_confirm = False
+
 
 
     def push_message(self, text):
@@ -521,3 +524,120 @@ class Game:
                 self.awaiting_quit_confirm = False
             return
     
+    def restart(self, new_seed=None):
+        """
+        Restartuje hru na stejném stdscr s novým seedem (pokud je předán).
+        Volá __init__ na existující instanci, což znovu inicializuje mapu, hráče, RNG atd.
+        """
+        # uložíme stdscr, aby __init__ mohl znovu použít terminál
+        stdscr = getattr(self, "stdscr", None)
+        # volitelně zachovej rozměry mapy, pokud existují
+        map_w = getattr(self, "map", None) and getattr(self.map, "width", None)
+        map_h = getattr(self, "map", None) and getattr(self.map, "height", None)
+
+        try:
+            # zavolat __init__ znovu s novým seedem
+            self.__init__(stdscr=stdscr, map_width=map_w, map_height=map_h, map_seed=new_seed)
+            # krátká debug zpráva (push_message je volána v __init__, ale necháme i tuto)
+            try:
+                self.push_message("[debug] Game restarted.")
+            except Exception:
+                pass
+        except Exception as e:
+            try:
+                self.push_message(f"[debug] restart failed: {e}")
+            except Exception:
+                pass
+
+    def _show_escape_dialog(self):
+        """
+        Vykreslí modální dialog po použití escape podu.
+        Zobrazí final stats a nabídne Play again? [Yes] [No].
+        Pokud hráč zvolí Yes, restartuje hru s novým seedem.
+        Pokud No, ukončí hru.
+        """
+        try:
+            h, w = self.stdscr.getmaxyx()
+        except Exception:
+            # pokud stdscr není dostupné, fallback na textové potvrzení
+            try:
+                self.push_message("You successfully used escape pod and escaped to safety.")
+                self.push_message(f"Final Health: {getattr(self.player, 'health', 'N/A')}")
+                self.push_message(f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}")
+                self.push_message("Play again? (y/n)")
+            except Exception:
+                pass
+            return
+
+        dialog_w = min(50, w - 4)
+        dialog_h = 9
+        x0 = (w - dialog_w) // 2
+        y0 = (h - dialog_h) // 2
+
+        win = curses.newwin(dialog_h, dialog_w, y0, x0)
+        try:
+            win.keypad(True)
+        except Exception:
+            pass
+        win.border()
+
+        title = " Escape Pod "
+        try:
+            # center title on top border
+            win.addstr(0, max(1, (dialog_w - len(title)) // 2), title, curses.A_BOLD)
+        except Exception:
+            pass
+
+        # body text
+        lines = [
+            "You successfully used the escape pod and escaped to safety.",
+            "",
+            f"Final Health: {getattr(self.player, 'health', 'N/A')}",
+            f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}",
+            "",
+            "Play again? [Y]es   [N]o"
+        ]
+
+        for i, line in enumerate(lines, start=1):
+            try:
+                # center lines horizontally
+                pad = max(0, (dialog_w - 2 - len(line)) // 2)
+                win.addstr(i, 1 + pad, line[:dialog_w - 2])
+            except Exception:
+                pass
+
+        win.refresh()
+
+        # blokující smyčka pro volbu
+        while True:
+            try:
+                ch = self.stdscr.getch()
+            except KeyboardInterrupt:
+                # ignoruj opakované Ctrl+C během dialogu
+                continue
+            except Exception:
+                # pokud getch selže, ukončí dialog a nech hru skončit
+                self.running = False
+                return
+
+            if ch in (ord('y'), ord('Y')):
+                # restart s novým náhodným seedem
+                try:
+                    new_seed = self.rng.randint(0, 2**31 - 1)
+                except Exception:
+                    import time
+                    new_seed = int(time.time()) & 0x7fffffff
+                # zavolat restart
+                self.restart(new_seed=new_seed)
+                return
+            if ch in (ord('n'), ord('N')):
+                # ukončit hru
+                self.running = False
+                return
+            # jiná klávesa → ignoruj a čekej dál
+
+    def _handle_escape_confirm(self):
+        # wrapper, aby byl konzistentní s quit handlerem
+        self._show_escape_dialog()
+        
+

@@ -266,7 +266,8 @@ class MapGenerator:
                 "type": "item",
                 "name": "escape-pod",
                 "title": "Escape Pod",
-                "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch."
+                "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch.",
+                "on_use": {"action": "escape"}
             })
 
         # debug summary of placed objects
