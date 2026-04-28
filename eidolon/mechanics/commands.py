@@ -415,7 +415,7 @@ def _cmd_use(game, target):
                     # mark awaiting and call handler (dialog)
                     game.awaiting_escape_confirm = True
                     # do NOT remove the object yet; keep it if player cancels
-                    game._handle_escape_confirm()
+                   # game._handle_escape_confirm()
                     return "You successfully used the escape pod and escaped to safety."
                 return f"You interact with the {o.get('title') or o.get('name') or o.get('type')}. Nothing obvious happens."
 

@@ -586,22 +586,51 @@ class Game:
 
         # blokující smyčka: čekej na Enter nebo libovolnou klávesu
         while True:
-            ch = self.stdscr.getch()
-            
+            try:
+                # čteme přímo z dialogového okna, ne ze stdscr
+                ch = win.getch()
+            except KeyboardInterrupt:
+                # ignoruj opakované Ctrl+C během dialogu
+                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                continue
+            except Exception as e:
+                # pokud getch selže, ukončí hru
+                self.push_message(f"Exiting game. {e}")
+                self.running = False
+                return
+
             # Enter nebo Return
             if ch in (10, 13):
                 self.running = False
                 return
             # také akceptuj libovolnou jinou klávesu jako potvrzení
-            if ch is not None:
+            if ch != -1:
                 self.running = False
-                return
+            return
 
 
     def _handle_escape_confirm(self):
-        if not self.awaiting_escape_confirm:
+        """
+        Spustí escape dialog pokud je awaiting_escape_confirm True.
+        Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
+        """
+        if not getattr(self, "awaiting_escape_confirm", False):
+            # pokud není nastaven, nic nedělej (command nastaví flag)
             self.awaiting_escape_confirm = True
-        # wrapper, aby byl konzistentní s quit handlerem
-        self._show_escape_dialog()
+            return
+
+        try:
+            # zavolat dialog (blokující)
+            self._show_escape_dialog()
+        except KeyboardInterrupt:
+            # ignoruj opakované Ctrl+C během dialogu
+            try:
+                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+            except Exception:
+                pass
+        finally:
+            # vždy vyčistit flag, aby run() pokračovalo normálně
+            self.awaiting_escape_confirm = False
+
         
 
