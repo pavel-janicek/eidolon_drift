@@ -1,9 +1,21 @@
 [
   {
-    "id": "desc_bridge",
+    "id": "desc_bridge_1",
     "kind": "description",
     "sector_type": "BRIDGE",
-    "text": "The command center of the Eidolon. Consoles flicker with emergency lights. The captain's chair sits empty."
+    "text": "The command center of the Eidolon. Consoles flicker with emergency lights."
+  },
+  {
+    "id": "desc_bridge_2",
+    "kind": "description",
+    "sector_type": "BRIDGE",
+    "text": "A bank of failing displays shows corrupted star charts and static."
+  },
+  {
+    "id": "desc_bridge_3",
+    "kind": "description",
+    "sector_type": "BRIDGE",
+    "text": "The captain's chair is overturned; a coffee mug lies shattered on the floor."
   },
   {
     "id": "desc_engineering",
@@ -12,10 +24,33 @@
     "text": "A maze of conduits and machinery. Humming engines provide power to the ship. Warning lights blink sporadically."
   },
   {
+    "id": "desc_engineering_2",
+    "kind": "description",
+    "sector_type": "ENGINEERING",
+    "text": "The engine room is filled with the scent of oil and ozone. A coolant leak hisses nearby."
+  },
+  {
+    "id": "desc_engineering_3",
+    "kind": "description",
+    "sector_type": "ENGINEERING",
+    "text": "Sparks fly from a damaged console. The floor vibrates with the ship's failing systems."
+  },
+  {
     "id": "desc_crew",
     "kind": "description",
     "sector_type": "CREW",
     "text": "Crew quarters. Bunks line the walls, personal effects scattered about. The air smells of recycled oxygen."
+  },
+  {    "id": "desc_crew_2",
+    "kind": "description",
+    "sector_type": "CREW",
+    "text": "The crew's living area. A communal table is overturned, dishes shattered. Personal lockers are open and empty."
+  },
+  {
+    "id": "desc_crew_3",
+    "kind": "description",
+    "sector_type": "CREW",
+    "text": "The crew's quarters are eerily silent. A ventilation fan rattles intermittently, casting shadows on the walls."
   },
   {
     "id": "desc_medbay",
@@ -24,10 +59,34 @@
     "text": "Medical bay. Examination tables and diagnostic equipment. Emergency supplies are stored in cabinets."
   },
   {
+    "id": "desc_medbay_2",
+    "kind": "description",
+    "sector_type": "MEDBAY",
+    "text": "The medbay is cold and sterile. A medical scanner flickers with corrupted data. A tray of instruments lies overturned."
+  },
+  {
+    "id": "desc_medbay_3",
+    "kind": "description",
+    "sector_type": "MEDBAY",
+    "text": "The medical bay is quiet except for the soft beeping of inactive equipment. The air smells faintly of antiseptic."
+  },
+  {
     "id": "desc_cargo",
     "kind": "description",
     "sector_type": "CARGO",
     "text": "Cargo hold. Crates and containers are secured to the floor. The space echoes with the hum of life support."
+  },
+  {
+    "id": "desc_cargo_2",
+    "kind": "description",
+    "sector_type": "CARGO",
+    "text": "The cargo hold is dimly lit by industrial lamps. Loose straps sway gently, and a cold draft flows from an unknown source."
+  },
+  {
+    "id": "desc_cargo_3",
+    "kind": "description",
+    "sector_type": "CARGO",
+    "text": "The cargo hold is filled with the scent of dust and machinery. A crate is dented from the inside, as if something tried to escape."
   },
   {
     "id": "desc_airlock",
@@ -36,13 +95,35 @@
     "text": "Airlock chamber. Heavy doors seal the entrance to space. Suits hang on racks, ready for EVA."
   },
   {
+    "id": "desc_airlock_2",
+    "kind": "description",
+    "sector_type": "AIRLOCK",
+    "text": "The airlock is cold and quiet. A suit visor is cracked, and warning lights blink in irregular patterns."
+  },
+  {
+    "id": "desc_airlock_3",
+    "kind": "description",
+    "sector_type": "AIRLOCK",
+    "text": "The airlock smells of cold metal and vacuum. A faint scraping sound comes from the outer door, as if something is trying to get in or out."
+  },
+  {
     "id": "desc_empty",
     "kind": "description",
     "sector_type": "EMPTY",
     "text": "An empty corridor. Dim lights cast long shadows. The silence is broken only by distant machinery."
   },
-
-
+  {
+    "id": "desc_empty_2",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "A desolate section of the ship. The air is cold and still. Shadows seem to move at the edge of vision."
+  },
+  {
+    "id": "desc_empty_3",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "An empty hallway stretches into darkness. A faint vibration runs through the floor, and something drips rhythmically in the distance."
+  },
   {
     "id": "item_medkit_small",
     "kind": "template",
@@ -50,11 +131,19 @@
     "name": "medkit",
     "title": "Small Medkit",
     "description": "A compact medkit. Restores 25 health and 5 sanity.",
-    "on_use": {"action": "heal", "amount": 25, "sanity": 5},
-    "spawn_weight": {"MEDBAY": 0.6, "CREW": 0.15, "ENGINEERING": 0.05, "EMPTY": 0.05},
+    "on_use": {
+      "action": "heal",
+      "amount": 25,
+      "sanity": 5
+    },
+    "spawn_weight": {
+      "MEDBAY": 0.6,
+      "CREW": 0.15,
+      "ENGINEERING": 0.05,
+      "EMPTY": 0.05
+    },
     "density_modifier": 1.0
   },
-
   {
     "id": "item_ration",
     "kind": "template",
@@ -62,11 +151,17 @@
     "name": "ration",
     "title": "Emergency Ration",
     "description": "A sealed packet of food and water. Restores a small amount of health.",
-    "on_use": {"action": "heal", "amount": 10},
-    "spawn_weight": {"CARGO": 0.4, "CREW": 0.1, "EMPTY": 0.05},
+    "on_use": {
+      "action": "heal",
+      "amount": 10
+    },
+    "spawn_weight": {
+      "CARGO": 0.4,
+      "CREW": 0.1,
+      "EMPTY": 0.05
+    },
     "density_modifier": 1.0
   },
-
   {
     "id": "item_photo",
     "kind": "template",
@@ -75,10 +170,12 @@
     "title": "Crew Photo",
     "description": "A worn photograph of smiling crew members. It brings a moment of calm.",
     "sanity_gain": 10,
-    "spawn_weight": {"CREW": 0.25, "EMPTY": 0.10},
+    "spawn_weight": {
+      "CREW": 0.25,
+      "EMPTY": 0.10
+    },
     "density_modifier": 0.8
   },
-
   {
     "id": "item_charm",
     "kind": "template",
@@ -87,10 +184,13 @@
     "title": "Lucky Charm",
     "description": "A small charm carried by a former crew member. It radiates faint comfort.",
     "sanity_gain": 7,
-    "spawn_weight": {"CREW": 0.15, "CARGO": 0.05, "EMPTY": 0.08},
+    "spawn_weight": {
+      "CREW": 0.15,
+      "CARGO": 0.05,
+      "EMPTY": 0.08
+    },
     "density_modifier": 0.7
   },
-
   {
     "id": "item_dogtag",
     "kind": "template",
@@ -99,10 +199,13 @@
     "title": "Crew Dogtag",
     "description": "A metal dogtag engraved with a name. A reminder of humanity.",
     "sanity_gain": 5,
-    "spawn_weight": {"CREW": 0.2, "ENGINEERING": 0.05, "EMPTY": 0.08},
+    "spawn_weight": {
+      "CREW": 0.2,
+      "ENGINEERING": 0.05,
+      "EMPTY": 0.08
+    },
     "density_modifier": 0.9
   },
-
   {
     "id": "toolbox_small",
     "kind": "template",
@@ -110,10 +213,14 @@
     "name": "toolbox",
     "title": "Toolbox",
     "description": "A small toolbox with basic tools.",
-    "spawn_weight": {"ENGINEERING": 0.25, "CARGO": 0.05, "CREW": 0.02, "EMPTY": 0.05},
+    "spawn_weight": {
+      "ENGINEERING": 0.25,
+      "CARGO": 0.05,
+      "CREW": 0.02,
+      "EMPTY": 0.05
+    },
     "density_modifier": 1.1
   },
-
   {
     "id": "battery_pack",
     "kind": "template",
@@ -121,10 +228,13 @@
     "name": "battery",
     "title": "Battery Pack",
     "description": "A spare battery pack. Useful for powering small devices.",
-    "spawn_weight": {"ENGINEERING": 0.12, "CARGO": 0.08, "EMPTY": 0.05},
+    "spawn_weight": {
+      "ENGINEERING": 0.12,
+      "CARGO": 0.08,
+      "EMPTY": 0.05
+    },
     "density_modifier": 1.2
   },
-
   {
     "id": "small_crate",
     "kind": "template",
@@ -132,10 +242,13 @@
     "name": "crate",
     "title": "Small Crate",
     "description": "A small sealed crate. Might contain supplies.",
-    "spawn_weight": {"CARGO": 0.5, "CREW": 0.05, "EMPTY": 0.05},
+    "spawn_weight": {
+      "CARGO": 0.5,
+      "CREW": 0.05,
+      "EMPTY": 0.05
+    },
     "density_modifier": 1.2
   },
-
   {
     "id": "anomaly_residue",
     "kind": "template",
@@ -146,10 +259,13 @@
     "linger_damage": 2,
     "linger_event": "residue_nausea",
     "linger_message": "You feel nauseous from the residue.",
-    "spawn_weight": {"CARGO": 0.4, "CREW": 0.2, "EMPTY": 0.15},
+    "spawn_weight": {
+      "CARGO": 0.4,
+      "CREW": 0.2,
+      "EMPTY": 0.15
+    },
     "density_modifier": 0.9
   },
-
   {
     "id": "anomaly_signal",
     "kind": "template",
@@ -160,10 +276,12 @@
     "linger_damage": 1,
     "linger_event": "signal_headache",
     "linger_message": "A piercing headache builds as the signal pulses.",
-    "spawn_weight": {"ENGINEERING": 0.3, "EMPTY": 0.20},
+    "spawn_weight": {
+      "ENGINEERING": 0.3,
+      "EMPTY": 0.20
+    },
     "density_modifier": 0.8
   },
-
   {
     "id": "anomaly_spore",
     "kind": "template",
@@ -175,10 +293,13 @@
     "linger_sanity": 5,
     "linger_event": "spore_exposure",
     "linger_message": "The spores bite at your lungs and mind.",
-    "spawn_weight": {"MEDBAY": 0.14, "CREW": 0.15, "EMPTY": 0.10},
+    "spawn_weight": {
+      "MEDBAY": 0.14,
+      "CREW": 0.15,
+      "EMPTY": 0.10
+    },
     "density_modifier": 0.7
   },
-
   {
     "id": "anomaly_echo",
     "kind": "template",
@@ -189,11 +310,12 @@
     "linger_sanity": 8,
     "linger_event": "void_whispers",
     "linger_message": "Whispers echo in your mind...",
-    "spawn_weight": {"EMPTY": 0.20, "CREW": 0.05},
+    "spawn_weight": {
+      "EMPTY": 0.20,
+      "CREW": 0.05
+    },
     "density_modifier": 0.6
   },
-
-
   {
     "id": "log_generic",
     "kind": "template",
@@ -203,10 +325,15 @@
     "description": "A personal log terminal. Use 'inspect' to read.",
     "content_template": "Log entry: {text}",
     "fragmented_chance": 0.35,
-    "spawn_weight": {"BRIDGE": 0.8, "CREW": 0.5, "ENGINEERING": 0.35, "CARGO": 0.1, "EMPTY": 0.05},
+    "spawn_weight": {
+      "BRIDGE": 0.8,
+      "CREW": 0.5,
+      "ENGINEERING": 0.35,
+      "CARGO": 0.1,
+      "EMPTY": 0.05
+    },
     "density_modifier": 1.1
   },
-
   {
     "id": "log_medical",
     "kind": "template",
@@ -216,12 +343,15 @@
     "description": "A medical log terminal. Use 'inspect' to read.",
     "content_template": "Medical - {text}",
     "fragmented_chance": 0.25,
-    "spawn_weight": {"MEDBAY": 0.9, "CREW": 0.3, "ENGINEERING": 0.15, "CARGO": 0.1, "EMPTY": 0.03},
+    "spawn_weight": {
+      "MEDBAY": 0.9,
+      "CREW": 0.3,
+      "ENGINEERING": 0.15,
+      "CARGO": 0.1,
+      "EMPTY": 0.03
+    },
     "density_modifier": 1.0
   },
-
-
-
   {
     "id": "debris_small",
     "kind": "template",
@@ -229,128 +359,138 @@
     "name": "debris",
     "title": "Scattered Debris",
     "description": "Bits of broken equipment and loose panels.",
-    "spawn_weight": {"EMPTY": 0.20, "CREW": 0.05, "CARGO": 0.08, "ENGINEERING": 0.06},
+    "spawn_weight": {
+      "EMPTY": 0.20,
+      "CREW": 0.05,
+      "CARGO": 0.08,
+      "ENGINEERING": 0.06
+    },
     "density_modifier": 1.4
   },
-
   {
     "id": "config_sector_types",
     "kind": "config",
-    "sector_types": ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"]
+    "sector_types": [
+      "BRIDGE",
+      "ENGINEERING",
+      "CREW",
+      "MEDBAY",
+      "CARGO",
+      "AIRLOCK",
+      "EMPTY"
+    ]
   },
-  
   {
-  "id": "env_bridge",
-  "kind": "environment",
-  "sector_type": "BRIDGE",
-  "environment": {
-    "lighting": "dim emergency lighting",
-    "noise": "soft hum of failing systems",
-    "air": "stale and metallic",
-    "radiation": "low",
-    "notes": [
-      "Flickering holographic displays cast shifting shadows.",
-      "A faint alarm tone repeats irregularly.",
-      "Loose cables sway gently as if something brushed past."
-    ]
+    "id": "env_bridge",
+    "kind": "environment",
+    "sector_type": "BRIDGE",
+    "environment": {
+      "lighting": "dim emergency lighting",
+      "noise": "soft hum of failing systems",
+      "air": "stale and metallic",
+      "radiation": "low",
+      "notes": [
+        "Flickering holographic displays cast shifting shadows.",
+        "A faint alarm tone repeats irregularly.",
+        "Loose cables sway gently as if something brushed past."
+      ]
+    }
+  },
+  {
+    "id": "env_engineering",
+    "kind": "environment",
+    "sector_type": "ENGINEERING",
+    "environment": {
+      "lighting": "harsh industrial lights",
+      "noise": "deep mechanical rumble",
+      "air": "warm and oily",
+      "radiation": "medium",
+      "notes": [
+        "Pipes vibrate with irregular pulses.",
+        "A coolant leak hisses somewhere nearby.",
+        "A distant clang echoes through the machinery."
+      ]
+    }
+  },
+  {
+    "id": "env_crew",
+    "kind": "environment",
+    "sector_type": "CREW",
+    "environment": {
+      "lighting": "soft cabin lights",
+      "noise": "quiet, with occasional creaks",
+      "air": "recycled and slightly warm",
+      "radiation": "none",
+      "notes": [
+        "A faint smell of detergent lingers.",
+        "Personal belongings lie scattered as if abandoned suddenly.",
+        "A ventilation fan rattles intermittently."
+      ]
+    }
+  },
+  {
+    "id": "env_medbay",
+    "kind": "environment",
+    "sector_type": "MEDBAY",
+    "environment": {
+      "lighting": "clinical white lights",
+      "noise": "soft beeping from inactive equipment",
+      "air": "sterile and cold",
+      "radiation": "none",
+      "notes": [
+        "A medical scanner flickers with corrupted data.",
+        "A tray of instruments lies overturned.",
+        "A faint antiseptic smell hangs in the air."
+      ]
+    }
+  },
+  {
+    "id": "env_cargo",
+    "kind": "environment",
+    "sector_type": "CARGO",
+    "environment": {
+      "lighting": "low industrial lamps",
+      "noise": "distant thuds from shifting containers",
+      "air": "dusty and dry",
+      "radiation": "low",
+      "notes": [
+        "Loose straps sway gently.",
+        "A crate is dented from the inside.",
+        "A cold draft flows from an unknown source."
+      ]
+    }
+  },
+  {
+    "id": "env_airlock",
+    "kind": "environment",
+    "sector_type": "AIRLOCK",
+    "environment": {
+      "lighting": "bright overhead lamps",
+      "noise": "pressurization pumps cycling",
+      "air": "thin and cold",
+      "radiation": "none",
+      "notes": [
+        "A suit visor is cracked.",
+        "Warning lights blink in irregular patterns.",
+        "A faint scraping sound comes from the outer door."
+      ]
+    }
+  },
+  {
+    "id": "env_empty",
+    "kind": "environment",
+    "sector_type": "EMPTY",
+    "environment": {
+      "lighting": "flickering corridor lights",
+      "noise": "distant echoes and metallic groans",
+      "air": "cold and still",
+      "radiation": "none",
+      "notes": [
+        "Shadows seem to move at the edge of vision.",
+        "A faint vibration runs through the floor.",
+        "Something drips rhythmically in the distance.",
+        "The silence feels unnaturally heavy."
+      ]
+    }
   }
-},
-{
-  "id": "env_engineering",
-  "kind": "environment",
-  "sector_type": "ENGINEERING",
-  "environment": {
-    "lighting": "harsh industrial lights",
-    "noise": "deep mechanical rumble",
-    "air": "warm and oily",
-    "radiation": "medium",
-    "notes": [
-      "Pipes vibrate with irregular pulses.",
-      "A coolant leak hisses somewhere nearby.",
-      "A distant clang echoes through the machinery."
-    ]
-  }
-},
-{
-  "id": "env_crew",
-  "kind": "environment",
-  "sector_type": "CREW",
-  "environment": {
-    "lighting": "soft cabin lights",
-    "noise": "quiet, with occasional creaks",
-    "air": "recycled and slightly warm",
-    "radiation": "none",
-    "notes": [
-      "A faint smell of detergent lingers.",
-      "Personal belongings lie scattered as if abandoned suddenly.",
-      "A ventilation fan rattles intermittently."
-    ]
-  }
-},
-{
-  "id": "env_medbay",
-  "kind": "environment",
-  "sector_type": "MEDBAY",
-  "environment": {
-    "lighting": "clinical white lights",
-    "noise": "soft beeping from inactive equipment",
-    "air": "sterile and cold",
-    "radiation": "none",
-    "notes": [
-      "A medical scanner flickers with corrupted data.",
-      "A tray of instruments lies overturned.",
-      "A faint antiseptic smell hangs in the air."
-    ]
-  }
-},
-{
-  "id": "env_cargo",
-  "kind": "environment",
-  "sector_type": "CARGO",
-  "environment": {
-    "lighting": "low industrial lamps",
-    "noise": "distant thuds from shifting containers",
-    "air": "dusty and dry",
-    "radiation": "low",
-    "notes": [
-      "Loose straps sway gently.",
-      "A crate is dented from the inside.",
-      "A cold draft flows from an unknown source."
-    ]
-  }
-},
-{
-  "id": "env_airlock",
-  "kind": "environment",
-  "sector_type": "AIRLOCK",
-  "environment": {
-    "lighting": "bright overhead lamps",
-    "noise": "pressurization pumps cycling",
-    "air": "thin and cold",
-    "radiation": "none",
-    "notes": [
-      "A suit visor is cracked.",
-      "Warning lights blink in irregular patterns.",
-      "A faint scraping sound comes from the outer door."
-    ]
-  }
-},
-{
-  "id": "env_empty",
-  "kind": "environment",
-  "sector_type": "EMPTY",
-  "environment": {
-    "lighting": "flickering corridor lights",
-    "noise": "distant echoes and metallic groans",
-    "air": "cold and still",
-    "radiation": "none",
-    "notes": [
-      "Shadows seem to move at the edge of vision.",
-      "A faint vibration runs through the floor.",
-      "Something drips rhythmically in the distance.",
-      "The silence feels unnaturally heavy."
-    ]
-  }
-}
-
 ]

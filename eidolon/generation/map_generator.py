@@ -203,7 +203,12 @@ class MapGenerator:
         # descriptions map
         desc_map = {}
         try:
-            desc_map = {t["sector_type"]: t["text"] for t in self.templates if isinstance(t, dict) and t.get("kind") == "description"}
+            for t in self.templates:
+                if isinstance(t, dict) and t.get("kind") == "description":
+                    st = t.get("sector_type")
+                    txt = t.get("text", "")
+                if st:
+                    desc_map.setdefault(st, []).append(txt)
         except Exception:
             desc_map = {}
 
@@ -215,7 +220,11 @@ class MapGenerator:
         self.rng.shuffle(keys)
         for (x, y) in keys:
             sector = grid[(x, y)]
-            sector.description = desc_map.get(sector.type, getattr(sector, "description", ""))
+            texts = desc_map.get(sector.type)
+            if texts:
+                sector.description = self.rng.choice(texts)
+            else:
+                sector.description = getattr(sector, "description", "")    
             sector.environment = self._random_environment(sector.type)
             if not hasattr(sector, "objects") or sector.objects is None:
                 sector.objects = []

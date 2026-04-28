@@ -86,12 +86,37 @@ class DescriptionRenderer:
             if maxy < 3 or maxx < 3:
                 return
 
-            # Get current sector description
+            # Get current sector
             sector = game.map.get_sector(game.player.x, game.player.y) if game.map else None
-            if sector:
-                desc_lines = self.output_renderer.wrap_text(sector.description or "Unknown sector", maxx - 4)
 
-                # Add object summary without replacing the main description
+            desc_lines = []
+            if sector:
+                # Header: sector type and coordinates
+                header = f"{getattr(sector, 'type', 'UNKNOWN')}  ({getattr(sector, 'x', '?')},{getattr(sector, 'y', '?')})"
+                # center or left-align header depending on width
+                if len(header) < maxx - 4:
+                    pad = (maxx - 4 - len(header)) // 2
+                    header = " " * pad + header
+                desc_lines.append(header)
+                desc_lines.append("")  # spacer
+
+                # Main description (wrapped)
+                main_desc = sector.description or "Unknown sector"
+                desc_lines.extend(self.output_renderer.wrap_text(main_desc, maxx - 4))
+
+                # Environment note (if present)
+                env = getattr(sector, "environment", None)
+                env_note = None
+                if isinstance(env, dict):
+                    env_note = env.get("note") or env.get("description")
+                elif isinstance(env, str):
+                    env_note = env
+                if env_note:
+                    desc_lines.append("")
+                    desc_lines.append("Environment:")
+                    desc_lines.extend(self.output_renderer.wrap_text(env_note, maxx - 6))
+
+                # Objects summary
                 if getattr(sector, "objects", None):
                     desc_lines.append("")
                     desc_lines.append("Objects:")
@@ -100,7 +125,7 @@ class DescriptionRenderer:
                             label = obj.get("name") or obj.get("description") or obj.get("type") or str(obj)
                         else:
                             label = str(obj)
-                        desc_lines.extend(self.output_renderer.wrap_text(f"  - {label}", maxx - 4))
+                        desc_lines.extend(self.output_renderer.wrap_text(f"  - {label}", maxx - 6))
                     if len(sector.objects) > 5:
                         desc_lines.append(f"  ...and {len(sector.objects) - 5} more")
             else:
