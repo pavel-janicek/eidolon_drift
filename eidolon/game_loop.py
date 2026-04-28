@@ -586,16 +586,8 @@ class Game:
 
         # blokující smyčka: čekej na Enter nebo libovolnou klávesu
         while True:
-            try:
-                ch = self.stdscr.getch()
-            except KeyboardInterrupt:
-                self.running = False
-                return
-            except Exception:
-                # pokud getch selže, ukončí hru
-                self.running = False
-                return
-
+            ch = self.stdscr.getch()
+            
             # Enter nebo Return
             if ch in (10, 13):
                 self.running = False

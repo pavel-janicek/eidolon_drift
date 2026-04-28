@@ -416,7 +416,7 @@ def _cmd_use(game, target):
                     game.awaiting_escape_confirm = True
                     # do NOT remove the object yet; keep it if player cancels
                     game._handle_escape_confirm()
-                    return None
+                    return "You successfully used the escape pod and escaped to safety."
                 return f"You interact with the {o.get('title') or o.get('name') or o.get('type')}. Nothing obvious happens."
 
     return f"No usable object named '{target}' found here."
