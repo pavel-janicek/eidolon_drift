@@ -311,7 +311,7 @@ def main():
 
             # Simple text-based game loop
             print("Welcome to Eidolon Drift!")
-            print("Type 'help' for commands, 'quit' to exit")
+            print("Type ':help' for commands, ':quit' to exit")
             print()
 
             while True:

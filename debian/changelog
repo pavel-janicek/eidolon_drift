@@ -1,3 +1,12 @@
+eidolon-drift (1.0.0-1) unstable; urgency=medium
+
+  * Upstream release 1.0.0
+  * Bump packaging to match upstream stable release
+  * Include previous packaging fixes: manpage, AppStream, ambient loader path fix
+  * Update debian/control and debian/copyright as needed
+
+ -- Pavel Janíček <pavel.janicek@live.com>  Wed, 29 Apr 2026 13:43:00 +0200
+
 eidolon-drift (0.9.8) semi-stable; urgency=medium
 
   * Initial Debian packaging.
