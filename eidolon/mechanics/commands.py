@@ -377,14 +377,16 @@ def _cmd_use(game, target):
                 on_use = it.get("on_use")
                 # heal action (existing behavior)
                 if on_use and on_use.get("action") == "heal":
+                    san = int(on_use.get("sanity", 0))
                     amt = int(on_use.get("amount", 0))
                     game.player.heal(amt)
+                    game.player.gain_sanity(san)
                     # remove consumable from inventory
                     try:
                         game.player.inventory.pop(i)
                     except Exception:
                         pass
-                    return f"You use the {it.get('title','item')}. Restored {amt} health."
+                    return f"You use the {it.get('title','item')}. Restored {amt} health and gained {san} sanity."
                 # escape action from inventory (rare, but support it)
                 if on_use and on_use.get("action") == "escape":
                     # trigger escape dialog
