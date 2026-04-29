@@ -230,7 +230,6 @@ class Game:
         signal.signal(signal.SIGINT, _sigint_handler)
 
         try:
-            self.push_message("[debug] Game.run starting")
 
             if self.renderer:
                 try:

@@ -278,7 +278,7 @@ class OutputRenderer:
                     "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
                     "desc_win": None if not self.desc_win else (self.desc_win.getbegyx(), self.desc_win.getmaxyx()),
                 }
-                self.game.push_message(f"[debug] layout info: {info}")
+                #self.game.push_message(f"[debug] layout info: {info}")
             except Exception:
                 pass
             self._layout_debug_emitted = True

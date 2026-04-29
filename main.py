@@ -234,10 +234,6 @@ def _run(stdscr):
         try:
             game.map = generated_map
             _ensure_player_on_map(game)
-            try:
-                game.push_message(f"[debug] map generated {game.map.width}x{game.map.height} and assigned to game")
-            except Exception:
-                pass
         except Exception as e:
             try:
                 game.push_message(f"[debug] failed to assign generated map: {e}")
@@ -250,7 +246,7 @@ def _run(stdscr):
             game.renderer = OutputRenderer(stdscr, game.map, game.player, game)
             try:
                 game.renderer.render()
-                game.push_message("[debug] renderer.render() called once from main")
+                #game.push_message("[debug] renderer.render() called once from main")
             except Exception as e:
                 game.push_message(f"[debug] renderer.render() failed: {e}")
         except Exception as e:
@@ -263,10 +259,6 @@ def _run(stdscr):
     if InputHandler is not None:
         try:
             game.input_handler = InputHandler(game, stdscr)
-            try:
-                game.push_message("[debug] InputHandler created")
-            except Exception:
-                pass
         except Exception as e:
             try:
                 game.push_message(f"[debug] failed to create input handler: {e}")
@@ -278,13 +270,6 @@ def _run(stdscr):
         except Exception:
             pass
 
-    try:
-        game.push_message(
-            "[debug] game starting; renderer set: "
-            + ("yes" if getattr(game, "renderer", None) else "no")
-        )
-    except Exception:
-        pass
 
     # run main loop
     try:
