@@ -138,7 +138,7 @@ def _compute_map_tiles_from_term(stdscr):
     maxy, maxx = stdscr.getmaxyx()
     status_h = 3
     msg_h = max(4, maxy // 5)
-    avail_h = maxy - status_h - msg_h - 4
+    avail_h = maxy - status_h - msg_h - 5
     if avail_h < MIN_MAP_HEIGHT:
         avail_h = MIN_MAP_HEIGHT
 

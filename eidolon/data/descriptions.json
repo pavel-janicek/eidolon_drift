@@ -1,0 +1,128 @@
+[
+  {
+    "id": "desc_bridge_1",
+    "kind": "description",
+    "sector_type": "BRIDGE",
+    "text": "The command center of the Eidolon. Consoles flicker with emergency lights."
+  },
+  {
+    "id": "desc_bridge_2",
+    "kind": "description",
+    "sector_type": "BRIDGE",
+    "text": "A bank of failing displays shows corrupted star charts and static."
+  },
+  {
+    "id": "desc_bridge_3",
+    "kind": "description",
+    "sector_type": "BRIDGE",
+    "text": "The captain's chair is overturned; a coffee mug lies shattered on the floor."
+  },
+  {
+    "id": "desc_engineering",
+    "kind": "description",
+    "sector_type": "ENGINEERING",
+    "text": "A maze of conduits and machinery. Humming engines provide power to the ship. Warning lights blink sporadically."
+  },
+  {
+    "id": "desc_engineering_2",
+    "kind": "description",
+    "sector_type": "ENGINEERING",
+    "text": "The engine room is filled with the scent of oil and ozone. A coolant leak hisses nearby."
+  },
+  {
+    "id": "desc_engineering_3",
+    "kind": "description",
+    "sector_type": "ENGINEERING",
+    "text": "Sparks fly from a damaged console. The floor vibrates with the ship's failing systems."
+  },
+  {
+    "id": "desc_crew",
+    "kind": "description",
+    "sector_type": "CREW",
+    "text": "Crew quarters. Bunks line the walls, personal effects scattered about. The air smells of recycled oxygen."
+  },
+  {
+    "id": "desc_crew_2",
+    "kind": "description",
+    "sector_type": "CREW",
+    "text": "The crew's living area. A communal table is overturned, dishes shattered. Personal lockers are open and empty."
+  },
+  {
+    "id": "desc_crew_3",
+    "kind": "description",
+    "sector_type": "CREW",
+    "text": "The crew's quarters are eerily silent. A ventilation fan rattles intermittently, casting shadows on the walls."
+  },
+  {
+    "id": "desc_medbay",
+    "kind": "description",
+    "sector_type": "MEDBAY",
+    "text": "Medical bay. Examination tables and diagnostic equipment. Emergency supplies are stored in cabinets."
+  },
+  {
+    "id": "desc_medbay_2",
+    "kind": "description",
+    "sector_type": "MEDBAY",
+    "text": "The medbay is cold and sterile. A medical scanner flickers with corrupted data. A tray of instruments lies overturned."
+  },
+  {
+    "id": "desc_medbay_3",
+    "kind": "description",
+    "sector_type": "MEDBAY",
+    "text": "The medical bay is quiet except for the soft beeping of inactive equipment. The air smells faintly of antiseptic."
+  },
+  {
+    "id": "desc_cargo",
+    "kind": "description",
+    "sector_type": "CARGO",
+    "text": "Cargo hold. Crates and containers are secured to the floor. The space echoes with the hum of life support."
+  },
+  {
+    "id": "desc_cargo_2",
+    "kind": "description",
+    "sector_type": "CARGO",
+    "text": "The cargo hold is dimly lit by industrial lamps. Loose straps sway gently, and a cold draft flows from an unknown source."
+  },
+  {
+    "id": "desc_cargo_3",
+    "kind": "description",
+    "sector_type": "CARGO",
+    "text": "The cargo hold is filled with the scent of dust and machinery. A crate is dented from the inside, as if something tried to escape."
+  },
+  {
+    "id": "desc_airlock",
+    "kind": "description",
+    "sector_type": "AIRLOCK",
+    "text": "Airlock chamber. Heavy doors seal the entrance to space. Suits hang on racks, ready for EVA."
+  },
+  {
+    "id": "desc_airlock_2",
+    "kind": "description",
+    "sector_type": "AIRLOCK",
+    "text": "The airlock is cold and quiet. A suit visor is cracked, and warning lights blink in irregular patterns."
+  },
+  {
+    "id": "desc_airlock_3",
+    "kind": "description",
+    "sector_type": "AIRLOCK",
+    "text": "The airlock smells of cold metal and vacuum. A faint scraping sound comes from the outer door, as if something is trying to get in or out."
+  },
+  {
+    "id": "desc_empty",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "An empty corridor. Dim lights cast long shadows. The silence is broken only by distant machinery."
+  },
+  {
+    "id": "desc_empty_2",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "A desolate section of the ship. The air is cold and still. Shadows seem to move at the edge of vision."
+  },
+  {
+    "id": "desc_empty_3",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "An empty hallway stretches into darkness. A faint vibration runs through the floor, and something drips rhythmically in the distance."
+  }
+]

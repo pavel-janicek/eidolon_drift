@@ -1,0 +1,15 @@
+[
+  {
+    "id": "config_sector_types",
+    "kind": "config",
+    "sector_types": [
+      "BRIDGE",
+      "ENGINEERING",
+      "CREW",
+      "MEDBAY",
+      "CARGO",
+      "AIRLOCK",
+      "EMPTY"
+    ]
+  }
+]

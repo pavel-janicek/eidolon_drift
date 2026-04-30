@@ -20,33 +20,62 @@ def _find_data_dir():
     return None
 
 
+
+
 def _load_templates(data_dir):
     templates = []
     by_id = {}
     config = {}
+
     if not data_dir:
         return templates, by_id, config
-    p = data_dir / "objects.json"
-    if not p.exists():
-        return templates, by_id, config
-    try:
-        with open(p, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            for item in data:
-                if isinstance(item, dict):
-                    kind = item.get("kind")
-                    if kind == "config":
-                        config.update(item)
-                    elif kind in ("template", "description"):
-                        templates.append(item)
-                    elif kind in ("template", "description", "environment"):
-                        templates.append(item)    
+
+    data_dir = Path(data_dir)
+
+    # helper: load a file if exists and extend templates
+    def _load_file(p: Path):
+        nonlocal templates, by_id, config
+        try:
+            with p.open("r", encoding="utf-8") as fh:
+                part = json.load(fh)
+                if isinstance(part, list):
+                    for item in part:
+                        if not isinstance(item, dict):
+                            continue
+                        kind = item.get("kind")
+                        if kind == "config":
+                            config.update(item)
+                        elif kind in ("template", "description", "environment"):
+                            templates.append(item)
+                        else:
+                            # keep unknown kinds as templates for backward compatibility
+                            templates.append(item)
                         if "id" in item:
                             by_id[item["id"]] = item
-    except Exception as e:
-        print(f"[mapgen] failed to load templates: {e}", file=sys.stderr)
-        return [], {}, {}
+        except Exception as e:
+            print(f"[mapgen] failed to load {p}: {e}", file=sys.stderr)
+
+    # preferred explicit files
+    preferred_files = ["descriptions.json", "items.json", "environment.json", "config.json"]
+    for fname in preferred_files:
+        p = data_dir / fname
+        if p.exists():
+            _load_file(p)
+
+    # load any files in templates/ directory (optional)
+    tpl_dir = data_dir / "templates"
+    if tpl_dir.exists() and tpl_dir.is_dir():
+        for f in sorted(tpl_dir.glob("*.json")):
+            _load_file(f)
+
+    # if nothing loaded yet, fallback to old objects.json
+    if not templates:
+        fallback = data_dir / "objects.json"
+        if fallback.exists():
+            _load_file(fallback)
+
     return templates, by_id, config
+
 
 
 class MapGenerator:
