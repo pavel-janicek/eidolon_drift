@@ -204,6 +204,35 @@ def _cmd_inspect(game, raw_target):
             # swallow pager errors and fallback to text return
             pass
         return False
+    
+    
+    def _apply_on_inspect_effect(o, full_flag=False):
+        on_inspect = o.get("on_inspect") or {}
+        if not isinstance(on_inspect, dict):
+            return False
+        action = on_inspect.get("action")
+        if action == "sanity":
+            amt = int(on_inspect.get("amount", 0))
+            try:
+                if amt > 0 and hasattr(game.player, "gain_sanity"):
+                    game.player.gain_sanity(amt)
+                elif amt < 0 and hasattr(game.player, "lose_sanity"):
+                    game.player.lose_sanity(-amt)
+                elif hasattr(game.player, "adjust_sanity"):
+                    game.player.adjust_sanity(amt)
+                elif hasattr(game.player, "gain_sanity"):
+                    game.player.gain_sanity(amt)
+            except Exception:
+                pass
+            if amt >= 0:
+                game.push_message(f"You feel calmer. Sanity +{amt}.")
+            else:
+                game.push_message(f"A chill runs down your spine. Sanity {amt}.")
+            return True
+        # další akce lze přidat zde
+        return False
+    
+
 
     # collect objects and simple strings
     dict_objs = [o for o in sector.objects if isinstance(o, dict)]
@@ -228,6 +257,7 @@ def _cmd_inspect(game, raw_target):
                     return None
                 return "\n".join(lines)
             # non-log: short description
+            _apply_on_inspect_effect(o, full_flag=full_flag)
             return _describe_object_short(obj)
 
     # 1) exact match on name/title (normalized)
@@ -246,6 +276,8 @@ def _cmd_inspect(game, raw_target):
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
+            _apply_on_inspect_effect(o, full_flag=full_flag)    
+            
             return _describe_object_short(o)
 
     # 2) substring match on name/title
@@ -263,6 +295,7 @@ def _cmd_inspect(game, raw_target):
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
+            _apply_on_inspect_effect(o, full_flag=full_flag)
             return _describe_object_short(o)
 
     # 3) token overlap match (e.g., "crew jacket" vs "jacket")
@@ -282,6 +315,7 @@ def _cmd_inspect(game, raw_target):
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
+            _apply_on_inspect_effect(o, full_flag=full_flag)
             return _describe_object_short(o)
 
     # 4) plain string objects: exact or substring normalized
