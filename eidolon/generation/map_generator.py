@@ -11,10 +11,10 @@ from eidolon.generation.log_loader import load_logs
 def _find_data_dir():
     here = Path(__file__).resolve()
     for up in range(1, 5):
-        candidate = here.parents[up] / "data" / "objects"
+        candidate = here.parents[up] / "data" 
         if candidate.exists() and candidate.is_dir():
             return candidate
-    candidate = Path.cwd() / "data" / "objects"
+    candidate = Path.cwd() / "data" 
     if candidate.exists() and candidate.is_dir():
         return candidate
     return None
