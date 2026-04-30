@@ -124,5 +124,17 @@
     "kind": "description",
     "sector_type": "EMPTY",
     "text": "An empty hallway stretches into darkness. A faint vibration runs through the floor, and something drips rhythmically in the distance."
+  },
+  {
+    "id": "desc_empty_4",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "The silence in this part of the ship feels unnaturally heavy, as if something is lurking just out of sight."
+  },
+  {
+    "id":"desc_empty_5",
+    "kind": "description",
+    "sector_type": "EMPTY",
+    "text": "This hallway is clean and polished. In the middle of all of this?!"
   }
 ]

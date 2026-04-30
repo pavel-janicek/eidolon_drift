@@ -236,8 +236,8 @@ class MapGenerator:
                 if isinstance(t, dict) and t.get("kind") == "description":
                     st = t.get("sector_type")
                     txt = t.get("text", "")
-                if st:
-                    desc_map.setdefault(st, []).append(txt)
+                    if st:
+                        desc_map.setdefault(st, []).append(txt)
 
 
         except Exception:
