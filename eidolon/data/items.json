@@ -52,194 +52,243 @@
     "density_modifier": 0.8
   },
   {
-    "id": "item_charm",
+    "id": "item_photo_cursed",
     "kind": "template",
     "type": "sanity_item",
-    "name": "lucky-charm",
-    "title": "Lucky Charm",
-    "description": "A small charm carried by a former crew member. It radiates faint comfort.",
-    "sanity_gain": 7,
-    "spawn_weight": {
-      "CREW": 0.15,
-      "CARGO": 0.05,
-      "EMPTY": 0.08
+    "name": "crew-photo",
+    "title": "Crew Photo",
+    "description": "Distorted photo of your crew. They do not look human to you. Something is wrong here...",
+    "on_use": {
+      "action": "sanity",
+      "amount": -15
     },
-    "density_modifier": 0.7
-  },
-  {
-    "id": "item_dogtag",
-    "kind": "template",
-    "type": "sanity_item",
-    "name": "crew-dogtag",
-    "title": "Crew Dogtag",
-    "description": "A metal dogtag engraved with a name. A reminder of humanity.",
-    "sanity_gain": 5,
     "spawn_weight": {
-      "CREW": 0.2,
-      "ENGINEERING": 0.05,
-      "EMPTY": 0.08
-    },
-    "density_modifier": 0.9
-  },
-  {
-    "id": "toolbox_small",
-    "kind": "template",
-    "type": "item",
-    "name": "toolbox",
-    "title": "Toolbox",
-    "description": "A small toolbox with basic tools.",
-    "spawn_weight": {
-      "ENGINEERING": 0.25,
-      "CARGO": 0.05,
+      "EMPTY": 0.12,
       "CREW": 0.02,
-      "EMPTY": 0.05
+      "ENGINEERING": 0.02
     },
-    "density_modifier": 1.1
+    "density_modifier": 0.3
   },
   {
-    "id": "battery_pack",
+    "id": "item_id_card",
     "kind": "template",
     "type": "item",
-    "name": "battery",
-    "title": "Battery Pack",
-    "description": "A spare battery pack. Useful for powering small devices.",
+    "name": "id-card",
+    "title": "ID Card",
+    "description": "An ID card with a photo and name. It might be useful for identification.",
     "spawn_weight": {
-      "ENGINEERING": 0.12,
-      "CARGO": 0.08,
+      "CREW": 0.3,
+      "ENGINEERING": 0.1,
       "EMPTY": 0.05
-    },
-    "density_modifier": 1.2
-  },
-  {
-    "id": "small_crate",
-    "kind": "template",
-    "type": "item",
-    "name": "crate",
-    "title": "Small Crate",
-    "description": "A small sealed crate. Might contain supplies.",
-    "spawn_weight": {
-      "CARGO": 0.5,
-      "CREW": 0.05,
-      "EMPTY": 0.05
-    },
-    "density_modifier": 1.2
-  },
-  {
-    "id": "anomaly_residue",
-    "kind": "template",
-    "type": "anomaly",
-    "name": "pulsing-residue",
-    "title": "Pulsing Residue",
-    "description": "A faint pulsing residue. Prolonged exposure causes nausea and damage.",
-    "linger_damage": 2,
-    "linger_event": "residue_nausea",
-    "linger_message": "You feel nauseous from the residue.",
-    "spawn_weight": {
-      "CARGO": 0.4,
-      "CREW": 0.2,
-      "EMPTY": 0.15
     },
     "density_modifier": 0.9
   },
   {
-    "id": "anomaly_signal",
+    "id": "item_eva_suit",
     "kind": "template",
-    "type": "anomaly",
-    "name": "strange-signal",
-    "title": "Strange Signal",
-    "description": "An anomalous electromagnetic signal. Prolonged exposure causes headaches.",
-    "linger_damage": 1,
-    "linger_event": "signal_headache",
-    "linger_message": "A piercing headache builds as the signal pulses.",
-    "spawn_weight": {
-      "ENGINEERING": 0.3,
-      "EMPTY": 0.2
+    "type": "item",
+    "name": "eva-suit",
+    "title": "EVA Suit",
+    "description": "A spacesuit for extravehicular activity. Provides protection in the vacuum of space.",
+    "on_use": {
+      "action": "heal",
+      "amount": 25,
+      "sanity": 5
     },
-    "density_modifier": 0.8
+    "spawn_weight": {
+      "AIRLOCK": 0.8
+    },
+    "density_modifier": 1.3 
   },
   {
-    "id": "anomaly_spore",
-    "kind": "template",
-    "type": "anomaly",
-    "name": "spore-cloud",
-    "title": "Spore Cloud",
-    "description": "A drifting cloud of spores. Linger exposure damages health and sanity.",
-    "linger_damage": 3,
-    "linger_sanity": 5,
-    "linger_event": "spore_exposure",
-    "linger_message": "The spores bite at your lungs and mind.",
-    "spawn_weight": {
-      "MEDBAY": 0.14,
-      "CREW": 0.15,
-      "EMPTY": 0.1
+      "id": "item_charm",
+      "kind": "template",
+      "type": "sanity_item",
+      "name": "lucky-charm",
+      "title": "Lucky Charm",
+      "description": "A small charm carried by a former crew member. It radiates faint comfort.",
+      "sanity_gain": 7,
+      "spawn_weight": {
+        "CREW": 0.15,
+        "CARGO": 0.05,
+        "EMPTY": 0.08
+      },
+      "density_modifier": 0.7
     },
-    "density_modifier": 0.7
-  },
-  {
-    "id": "anomaly_echo",
-    "kind": "template",
-    "type": "anomaly",
-    "name": "echoing-void",
-    "title": "Echoing Void",
-    "description": "A distortion in space-time. You hear whispers that aren't there.",
-    "linger_sanity": 8,
-    "linger_event": "void_whispers",
-    "linger_message": "Whispers echo in your mind...",
-    "spawn_weight": {
-      "EMPTY": 0.2,
-      "CREW": 0.05
+    {
+      "id": "item_dogtag",
+      "kind": "template",
+      "type": "sanity_item",
+      "name": "crew-dogtag",
+      "title": "Crew Dogtag",
+      "description": "A metal dogtag engraved with a name. A reminder of humanity.",
+      "sanity_gain": 5,
+      "spawn_weight": {
+        "CREW": 0.2,
+        "ENGINEERING": 0.05,
+        "EMPTY": 0.08
+      },
+      "density_modifier": 0.9
     },
-    "density_modifier": 0.6
-  },
-  {
-    "id": "log_generic",
-    "kind": "template",
-    "type": "log",
-    "name": "crew-log",
-    "title": "Crew Log",
-    "description": "A personal log terminal. Use 'inspect' to read.",
-    "content_template": "Log entry: {text}",
-    "fragmented_chance": 0.35,
-    "spawn_weight": {
-      "BRIDGE": 0.8,
-      "CREW": 0.5,
-      "ENGINEERING": 0.35,
-      "CARGO": 0.1,
-      "EMPTY": 0.05
+    {
+      "id": "toolbox_small",
+      "kind": "template",
+      "type": "item",
+      "name": "toolbox",
+      "title": "Toolbox",
+      "description": "A small toolbox with basic tools.",
+      "spawn_weight": {
+        "ENGINEERING": 0.25,
+        "CARGO": 0.05,
+        "CREW": 0.02,
+        "EMPTY": 0.05
+      },
+      "density_modifier": 1.1
     },
-    "density_modifier": 1.1
-  },
-  {
-    "id": "log_medical",
-    "kind": "template",
-    "type": "log",
-    "name": "log-medical",
-    "title": "Log - Medical",
-    "description": "A medical log terminal. Use 'inspect' to read.",
-    "content_template": "Medical - {text}",
-    "fragmented_chance": 0.25,
-    "spawn_weight": {
-      "MEDBAY": 0.9,
-      "CREW": 0.3,
-      "ENGINEERING": 0.15,
-      "CARGO": 0.1,
-      "EMPTY": 0.03
+    {
+      "id": "battery_pack",
+      "kind": "template",
+      "type": "item",
+      "name": "battery",
+      "title": "Battery Pack",
+      "description": "A spare battery pack. Useful for powering small devices.",
+      "spawn_weight": {
+        "ENGINEERING": 0.12,
+        "CARGO": 0.08,
+        "EMPTY": 0.05
+      },
+      "density_modifier": 1.2
     },
-    "density_modifier": 1.0
-  },
-  {
-    "id": "debris_small",
-    "kind": "template",
-    "type": "debris",
-    "name": "debris",
-    "title": "Scattered Debris",
-    "description": "Bits of broken equipment and loose panels.",
-    "spawn_weight": {
-      "EMPTY": 0.2,
-      "CREW": 0.05,
-      "CARGO": 0.08,
-      "ENGINEERING": 0.06
+    {
+      "id": "small_crate",
+      "kind": "template",
+      "type": "item",
+      "name": "crate",
+      "title": "Small Crate",
+      "description": "A small sealed crate. Might contain supplies.",
+      "spawn_weight": {
+        "CARGO": 0.5,
+        "CREW": 0.05,
+        "EMPTY": 0.05
+      },
+      "density_modifier": 1.2
     },
-    "density_modifier": 1.4
-  }
-]
+    {
+      "id": "anomaly_residue",
+      "kind": "template",
+      "type": "anomaly",
+      "name": "pulsing-residue",
+      "title": "Pulsing Residue",
+      "description": "A faint pulsing residue. Prolonged exposure causes nausea and damage.",
+      "linger_damage": 2,
+      "linger_event": "residue_nausea",
+      "linger_message": "You feel nauseous from the residue.",
+      "spawn_weight": {
+        "CARGO": 0.4,
+        "CREW": 0.2,
+        "EMPTY": 0.15
+      },
+      "density_modifier": 0.9
+    },
+    {
+      "id": "anomaly_signal",
+      "kind": "template",
+      "type": "anomaly",
+      "name": "strange-signal",
+      "title": "Strange Signal",
+      "description": "An anomalous electromagnetic signal. Prolonged exposure causes headaches.",
+      "linger_damage": 1,
+      "linger_event": "signal_headache",
+      "linger_message": "A piercing headache builds as the signal pulses.",
+      "spawn_weight": {
+        "ENGINEERING": 0.3,
+        "EMPTY": 0.2
+      },
+      "density_modifier": 0.8
+    },
+    {
+      "id": "anomaly_spore",
+      "kind": "template",
+      "type": "anomaly",
+      "name": "spore-cloud",
+      "title": "Spore Cloud",
+      "description": "A drifting cloud of spores. Linger exposure damages health and sanity.",
+      "linger_damage": 3,
+      "linger_sanity": 5,
+      "linger_event": "spore_exposure",
+      "linger_message": "The spores bite at your lungs and mind.",
+      "spawn_weight": {
+        "MEDBAY": 0.14,
+        "CREW": 0.15,
+        "EMPTY": 0.1
+      },
+      "density_modifier": 0.7
+    },
+    {
+      "id": "anomaly_echo",
+      "kind": "template",
+      "type": "anomaly",
+      "name": "echoing-void",
+      "title": "Echoing Void",
+      "description": "A distortion in space-time. You hear whispers that aren't there.",
+      "linger_sanity": 8,
+      "linger_event": "void_whispers",
+      "linger_message": "Whispers echo in your mind...",
+      "spawn_weight": {
+        "EMPTY": 0.2,
+        "CREW": 0.05
+      },
+      "density_modifier": 0.6
+    },
+    {
+      "id": "log_generic",
+      "kind": "template",
+      "type": "log",
+      "name": "crew-log",
+      "title": "Crew Log",
+      "description": "A personal log terminal. Use 'inspect' to read.",
+      "content_template": "Log entry: {text}",
+      "fragmented_chance": 0.35,
+      "spawn_weight": {
+        "BRIDGE": 0.8,
+        "CREW": 0.5,
+        "ENGINEERING": 0.35,
+        "CARGO": 0.1,
+        "EMPTY": 0.05
+      },
+      "density_modifier": 1.1
+    },
+    {
+      "id": "log_medical",
+      "kind": "template",
+      "type": "log",
+      "name": "log-medical",
+      "title": "Log - Medical",
+      "description": "A medical log terminal. Use 'inspect' to read.",
+      "content_template": "Medical - {text}",
+      "fragmented_chance": 0.25,
+      "spawn_weight": {
+        "MEDBAY": 0.9,
+        "CREW": 0.3,
+        "ENGINEERING": 0.15,
+        "CARGO": 0.1,
+        "EMPTY": 0.03
+      },
+      "density_modifier": 1.0
+    },
+    {
+      "id": "debris_small",
+      "kind": "template",
+      "type": "debris",
+      "name": "debris",
+      "title": "Scattered Debris",
+      "description": "Bits of broken equipment and loose panels.",
+      "spawn_weight": {
+        "EMPTY": 0.2,
+        "CREW": 0.05,
+        "CARGO": 0.08,
+        "ENGINEERING": 0.06
+      },
+      "density_modifier": 1.4
+    }
+  ]

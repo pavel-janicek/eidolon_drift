@@ -356,7 +356,6 @@ def _cmd_decrypt(game, target):
 def _cmd_use(game, target):
     target_norm = _normalize(target)
 
-    # helper: check if object matches target string
     def _matches_obj(obj, target_norm):
         if not isinstance(obj, dict):
             return False
@@ -370,57 +369,102 @@ def _cmd_use(game, target):
             return True
         return False
 
-    # 1) search inventory first
+    # collect matches (inventory first, then sector)
+    matches = []  # tuples: ("inv", index, obj) or ("sec", index, obj)
     for i, it in enumerate(list(game.player.inventory)):
-        if isinstance(it, dict):
-            if _matches_obj(it, target_norm):
-                on_use = it.get("on_use")
-                # heal action (existing behavior)
-                if on_use and on_use.get("action") == "heal":
-                    san = int(on_use.get("sanity", 0))
-                    amt = int(on_use.get("amount", 0))
-                    game.player.heal(amt)
-                    game.player.gain_sanity(san)
-                    # remove consumable from inventory
-                    try:
-                        game.player.inventory.pop(i)
-                    except Exception:
-                        pass
-                    return f"You use the {it.get('title','item')}. Restored {amt} health and gained {san} sanity."
-                # escape action from inventory (rare, but support it)
-                if on_use and on_use.get("action") == "escape":
-                    # trigger escape dialog
-                    game.awaiting_escape_confirm = True
-                    # do not remove item yet; dialog will restart or end
-                    game._handle_escape_confirm()
-                    return None
-                return f"You use the {it.get('title','item')}. Nothing obvious happens."
+        if isinstance(it, dict) and _matches_obj(it, target_norm):
+            matches.append(("inv", i, it))
 
-    # 2) search sector objects
     sector = game.map.get_sector(game.player.x, game.player.y)
     if sector:
         for i, o in enumerate(list(getattr(sector, "objects", []) or [])):
             if isinstance(o, dict) and _matches_obj(o, target_norm):
-                on_use = o.get("on_use")
-                # heal action
-                if on_use and on_use.get("action") == "heal":
-                    amt = int(on_use.get("amount", 0))
-                    game.player.heal(amt)
-                    # remove if consumable
-                    try:
-                        sector.objects.pop(i)
-                    except Exception:
-                        pass
-                    return f"You use the {o.get('title','item')}. Restored {amt} health."
-                # escape action (escape-pod)
-                if (on_use and on_use.get("action") == "escape") or o.get("name") == "escape-pod" or o.get("type") == "escape-pod" or _normalize(o.get("title","")) == "escape pod":
-                    # mark awaiting and call handler (dialog)
-                    game.awaiting_escape_confirm = True
-                    # do NOT remove the object yet; keep it if player cancels
-                   # game._handle_escape_confirm()
-                    return "You successfully used the escape pod and escaped to safety."
-                return f"You interact with the {o.get('title') or o.get('name') or o.get('type')}. Nothing obvious happens."
+                matches.append(("sec", i, o))
 
-    return f"No usable object named '{target}' found here."
+    if not matches:
+        return f"No usable object named '{target}' found here."
+
+    # pick first match (inventory preferred because collected first)
+    source, idx, obj = matches[0]
+
+    # helper to adjust sanity safely
+    def _apply_sanity(delta):
+        # prefer explicit methods if available
+        if delta == 0:
+            return
+        # try gain_sanity for positive, lose_sanity for negative, fallback to gain_sanity with negative
+        try:
+            if delta > 0 and hasattr(game.player, "gain_sanity"):
+                game.player.gain_sanity(int(delta))
+                return
+            if delta < 0 and hasattr(game.player, "lose_sanity"):
+                game.player.lose_sanity(int(-delta))
+                return
+            # fallback: try adjust_sanity or gain_sanity with signed value
+            if hasattr(game.player, "adjust_sanity"):
+                game.player.adjust_sanity(int(delta))
+                return
+            if hasattr(game.player, "gain_sanity"):
+                game.player.gain_sanity(int(delta))
+                return
+        except Exception:
+            # best-effort: ignore if player API differs
+            pass
+
+    # process on_use
+    on_use = obj.get("on_use") or {}
+    action = on_use.get("action") if isinstance(on_use, dict) else None
+
+    # HEAL
+    if action == "heal":
+        amt = int(on_use.get("amount", 0))
+        san = int(on_use.get("sanity", 0))
+        try:
+            game.player.heal(amt)
+        except Exception:
+            pass
+        _apply_sanity(san)
+        # remove consumable
+        if source == "inv":
+            try:
+                game.player.inventory.pop(idx)
+            except Exception:
+                pass
+        else:
+            try:
+                sector.objects.pop(idx)
+            except Exception:
+                pass
+        return f"You use the {obj.get('title','item')}. Restored {amt} health and gained {san} sanity."
+
+    # SANITY action (positive or negative)
+    if action == "sanity":
+        amt = int(on_use.get("amount", 0))
+        _apply_sanity(amt)
+        # remove if consumable (optional; keep or remove depending on design)
+        if source == "inv":
+            try:
+                game.player.inventory.pop(idx)
+            except Exception:
+                pass
+        else:
+            try:
+                sector.objects.pop(idx)
+            except Exception:
+                pass
+        if amt >= 0:
+            return f"You use the {obj.get('title','item')}. Sanity +{amt}."
+        else:
+            return f"You use the {obj.get('title','item')}. A chill runs down your spine. Sanity {amt}."
+
+    # ESCAPE action
+    if action == "escape" or obj.get("name") == "escape-pod" or obj.get("id") == "escape-pod":
+        # only set flag here; do NOT call dialog directly
+        game.awaiting_escape_confirm = True
+        return None
+
+    # fallback: no actionable on_use, but object matches target
+    return f"You interact with the {obj.get('title') or obj.get('name') or obj.get('type')}. Nothing obvious happens."
+
 
 
