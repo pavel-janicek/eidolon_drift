@@ -236,8 +236,9 @@ class MapGenerator:
                 if isinstance(t, dict) and t.get("kind") == "description":
                     st = t.get("sector_type")
                     txt = t.get("text", "")
-            if st:
-                desc_map.setdefault(st, []).append(txt)
+                if st:
+                    desc_map.setdefault(st, []).append(txt)
+
 
         except Exception:
             desc_map = {}
@@ -250,12 +251,42 @@ class MapGenerator:
         self.rng.shuffle(keys)
         for (x, y) in keys:
             sector = grid[(x, y)]
+            # vyber základní popis z desc_map (pokud existuje)
             texts = desc_map.get(sector.type)
             if texts:
-                sector.description = self.rng.choice(texts)
+                base_desc = self.rng.choice(texts)
             else:
-                sector.description = getattr(sector, "description", "")    
-            sector.environment = self._random_environment(sector.type)
+                base_desc = getattr(sector, "description", "")
+
+            # načti environment dict (pokud existuje)
+            env = self._random_environment(sector.type)
+            sector.environment = env
+
+            # doplň description o environmentální větu nebo náhodnou poznámku
+            env_snippet = ""
+            if isinstance(env, dict):
+                # preferuj explicitní 'description' pole, jinak náhodnou položku z 'notes'
+                if env.get("description"):
+                    env_snippet = env.get("description")
+                else:
+                    notes = env.get("notes") or []
+                    if notes:
+                        env_snippet = self.rng.choice(notes)
+
+            # spojit base_desc a env_snippet hezky dohromady
+            if base_desc and env_snippet:
+                # pokud base_desc končí tečkou, přidej mezeru; jinak spoj s tečkou
+                if base_desc.strip().endswith((".", "!", "?")):
+                    sector.description = f"{base_desc.strip()} {env_snippet.strip()}"
+                else:
+                    sector.description = f"{base_desc.strip()}. {env_snippet.strip()}"
+            elif base_desc:
+                sector.description = base_desc
+            elif env_snippet:
+                sector.description = env_snippet
+            else:
+                sector.description = ""
+
             if not hasattr(sector, "objects") or sector.objects is None:
                 sector.objects = []
             try:
