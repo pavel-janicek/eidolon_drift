@@ -1,9 +1,9 @@
     # eidolon/game_loop.py
     # Cross-platform curses import
-try:
+    try:
         import curses
         import signal
-except ImportError:
+    except ImportError:
         try:
             # Try windows-curses for Windows
             import windows_curses as curses
@@ -75,7 +75,7 @@ from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
 
 
-    class Game:
+class Game:
         def __init__(self, stdscr=None, map_width=None, map_height=None, map_seed=None, base_density=None, min_distance=None):
             """
             Initialize game state.
