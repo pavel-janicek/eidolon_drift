@@ -99,6 +99,15 @@ class Game:
         """
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(filename="eidolon.log", encoding="utf-8", level=LOG_LEVEL)
+        try:
+            import pygame
+            pygame.init()
+            pygame.joystick.init()
+            # optional: print debug
+            self.logger.debug("pygame init in Game: joysticks=%d", pygame.joystick.get_count())
+        except Exception:
+            self.logger.debug("pygame not available, gamepad support disabled")
+            pass
         self.stdscr = stdscr
 
         # --- create generator and map (keep generator reference) ---
@@ -140,7 +149,7 @@ class Game:
 
         # --- player and core systems ---
         self.player = Player(x=start[0], y=start[1])
-        self.input_handler = None
+        self.input_handler = InputHandler(stdscr)
         self.renderer = None
         self.running = True
 

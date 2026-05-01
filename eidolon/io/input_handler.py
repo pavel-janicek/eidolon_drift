@@ -92,9 +92,14 @@ PS4_BUTTON_MAP = {
     "touch": 13,
 }
 PS4_AXIS_MAP = {
+    "left_x": 0,
+    "left_y": 1,
+    "right_x": 2,   # uprav podle map-testu pokud je potřeba
+    "right_y": 3,   # uprav podle map-testu pokud je potřeba
     "l2_axis": 4,
     "r2_axis": 5,
 }
+
 
 DEFAULT_ACTIONS = {
     "move": "move",
@@ -123,7 +128,7 @@ class InputHandler:
         self, on_action_or_game=None, stdscr=None, deadzone: float = DEFAULT_DEADZONE
     ):
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(filename='eidolon.log', encoding='utf-8', level=LOG_LEVEL)
+        logging.basicConfig(filename='eidolon.log', encoding='utf-8', level=self.LOG_LEVEL)
         """
         Backward-compatible constructor:
         - legacy call: InputHandler(stdscr)  -> on_action_or_game is curses window
@@ -173,21 +178,32 @@ class InputHandler:
             start_monitoring(self._hotplug_cb, poll_interval=HOTPLUG_POLL)
             self._monitoring = True
         except Exception:
-            logger.debug("InputHandler: detect_input monitoring not available")
+            self.logger.debug("InputHandler: detect_input monitoring not available")
 
-        # initialize pygame joystick if available and backend indicates pygame
-        if _PYGAME and self.backend == "pygame":
+        # --- ensure pygame joystick subsystem is initialized if pygame is available ---
+        if _PYGAME:
             try:
+                # initialize pygame subsystems (safe to call multiple times)
                 _PYGAME.init()
                 _PYGAME.joystick.init()
-                self._init_pygame_joystick()
+                self.logger.debug("InputHandler: pygame available, joystick count=%d", _PYGAME.joystick.get_count())
+                # If detect_input didn't claim a backend but pygame is present, prefer pygame
+                if not self.backend:
+                    self.logger.debug("InputHandler: no backend from detect_input; falling back to pygame")
+                    self.backend = "pygame"
+                # try to init joystick(s) now
+                try:
+                    self._init_pygame_joystick()
+                except Exception:
+                    self.logger.exception("InputHandler: _init_pygame_joystick failed")
             except Exception:
-                logger.exception("InputHandler: pygame init failed")
+                self.logger.exception("InputHandler: pygame init failed")
+
 
         # if evdev backend and no pygame joystick, we'll poll devices on demand
         if not self._pygame_joystick and _EVDEV and self.backend == "evdev":
             # nothing to init here; poll will detect devices
-            logger.debug("InputHandler: evdev available as fallback")
+            self.logger.debug("InputHandler: evdev available as fallback")
 
     def get_key(self, timeout: float = 0.0):
         """
@@ -279,7 +295,7 @@ class InputHandler:
 
     # --- hotplug callback -------------------------------------------------
     def _hotplug_cb(self, ev_type: str, info: dict):
-        logger.info("InputHandler hotplug %s: %s", ev_type, info)
+        self.logger.info("InputHandler hotplug %s: %s", ev_type, info)
         if ev_type == "added":
             # try to init pygame joystick if pygame backend
             if _PYGAME and self.backend == "pygame":
@@ -298,15 +314,15 @@ class InputHandler:
         try:
             count = _PYGAME.joystick.get_count()
             if count <= 0:
-                logger.debug("InputHandler: no pygame joysticks found")
+                self.logger.debug("InputHandler: no pygame joysticks found")
                 return
             j = _PYGAME.joystick.Joystick(0)
             j.init()
             self._pygame_joystick = j
             self._using_controller = True
-            logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
+            self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
         except Exception:
-            logger.exception("InputHandler: failed to init pygame joystick")
+            self.logger.exception("InputHandler: failed to init pygame joystick")
 
     # --- deadzone / axis helpers ------------------------------------------
     def _apply_deadzone(self, v: float) -> float:
@@ -351,16 +367,16 @@ class InputHandler:
 
         if ev.type == _PYGAME.JOYAXISMOTION:
             # read left stick axes by configured indices
-            lx = (
-                self._pygame_joystick.get_axis(PS4_AXIS_MAP.get("left_x", 0))
-                if PS4_AXIS_MAP.get("left_x") is not None
-                else 0.0
-            )
-            ly = (
-                self._pygame_joystick.get_axis(PS4_AXIS_MAP.get("left_y", 1))
-                if PS4_AXIS_MAP.get("left_y") is not None
-                else 0.0
-            )
+            lx_idx = PS4_AXIS_MAP.get("left_x", 0)
+            ly_idx = PS4_AXIS_MAP.get("left_y", 1)
+            try:
+                lx = self._pygame_joystick.get_axis(lx_idx)
+            except Exception:
+                lx = 0.0    
+            try:
+                ly = self._pygame_joystick.get_axis(ly_idx)
+            except Exception:
+                ly = 0.0
             mx, my = self._axis_to_move(lx, ly)
             my = -my  # invert Y if controller reports up as -1
             if (mx, my) != self._last_move:
@@ -372,10 +388,10 @@ class InputHandler:
         elif ev.type == _PYGAME.JOYBUTTONDOWN:
             self._handle_button_down(ev.button)
         elif ev.type == _PYGAME.JOYDEVICEADDED:
-            logger.info("InputHandler: pygame device added")
+            self.logger.info("InputHandler: pygame device added")
             self._init_pygame_joystick()
         elif ev.type == _PYGAME.JOYDEVICEREMOVED:
-            logger.info("InputHandler: pygame device removed")
+            self.logger.info("InputHandler: pygame device removed")
             self._pygame_joystick = None
             self._using_controller = False
 
@@ -395,7 +411,7 @@ class InputHandler:
                     if norm > (threshold if threshold is not None else 0.5):
                         self._dispatch_action(action)
                 except Exception:
-                    logger.debug("InputHandler: axis read failed", exc_info=True)
+                    self.logger.debug("InputHandler: axis read failed", exc_info=True)
 
     def _handle_button_down(self, btn_index: int):
         # direct mapping
