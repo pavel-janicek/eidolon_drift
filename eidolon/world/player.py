@@ -21,4 +21,3 @@ class Player:
 
     def gain_sanity(self, amount):
         self.sanity = min(100, self.sanity + amount)
-        

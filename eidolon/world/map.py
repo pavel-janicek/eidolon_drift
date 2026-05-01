@@ -1,6 +1,7 @@
 # eidolon/world/map.py
 from eidolon.world.sector import Sector
 
+
 class Map:
     def __init__(self, width, height, grid):
         self.width = width

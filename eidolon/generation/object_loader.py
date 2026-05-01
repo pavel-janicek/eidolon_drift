@@ -5,6 +5,7 @@ from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "objects"
 
+
 def load_object_templates():
     templates = []
     for path in glob.glob(str(DATA_DIR / "*.json")):

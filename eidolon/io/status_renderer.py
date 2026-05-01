@@ -1,4 +1,5 @@
 from eidolon.config import HEALTH_RED_THRESHOLD, HEALTH_YELLOW_THRESHOLD
+
 # Cross-platform curses import
 try:
     import curses
@@ -89,14 +90,17 @@ class StatusRenderer:
 
             # choose color pair: green (>50%), yellow (25-50%), red (<25%)
             if pct > HEALTH_YELLOW_THRESHOLD:
-                color_pair = curses.color_pair(
-                    10) if self.parent.colors_available else 0
+                color_pair = (
+                    curses.color_pair(10) if self.parent.colors_available else 0
+                )
             elif pct > HEALTH_RED_THRESHOLD:
-                color_pair = curses.color_pair(
-                    11) if self.parent.colors_available else 0
+                color_pair = (
+                    curses.color_pair(11) if self.parent.colors_available else 0
+                )
             else:
-                color_pair = curses.color_pair(
-                    12) if self.parent.colors_available else 0
+                color_pair = (
+                    curses.color_pair(12) if self.parent.colors_available else 0
+                )
 
             # build visual bar: filled part colored, empty part normal
             filled_str = "#" * filled
@@ -118,21 +122,24 @@ class StatusRenderer:
                 if filled > 0:
                     try:
                         win.addstr(
-                            1, start_x + 1, filled_str[:max_line], color_pair | curses.A_BOLD)
+                            1,
+                            start_x + 1,
+                            filled_str[:max_line],
+                            color_pair | curses.A_BOLD,
+                        )
                     except Exception:
                         # fallback: draw without color
-                        win.addstr(1, start_x + 1,
-                                   filled_str[:max_line], curses.A_BOLD)
+                        win.addstr(1, start_x + 1, filled_str[:max_line], curses.A_BOLD)
                 # draw empty segment
                 try:
-                    win.addstr(1, start_x + 1 + filled,
-                               empty_str[:max_line], curses.A_DIM)
+                    win.addstr(
+                        1, start_x + 1 + filled, empty_str[:max_line], curses.A_DIM
+                    )
                 except Exception:
                     pass
                 # draw right bracket
                 try:
-                    win.addstr(1, start_x + 1 + filled +
-                               empty, "]", curses.A_NORMAL)
+                    win.addstr(1, start_x + 1 + filled + empty, "]", curses.A_NORMAL)
                 except Exception:
                     pass
             except Exception as e:
@@ -145,10 +152,10 @@ class StatusRenderer:
         except Exception as e:
             if not getattr(self.parent, "_status_outer_err_emitted", False):
                 self.parent.game.push_message(f"[debug] status outer error: {e}")
-                self.parent._status_outer_err_emitted = True    
+                self.parent._status_outer_err_emitted = True
 
-       # --- SANITY BAR ---
-        p = self.parent.player   
+        # --- SANITY BAR ---
+        p = self.parent.player
         san = max(0, min(p.sanity, 100))
         san_pct = san / 100
 
@@ -178,19 +185,25 @@ class StatusRenderer:
 
             # filled part
             if san_filled > 0:
-                win.addstr(san_y, san_start_x + 1,
-                    san_filled_str[:max_line], san_color | curses.A_BOLD)
+                win.addstr(
+                    san_y,
+                    san_start_x + 1,
+                    san_filled_str[:max_line],
+                    san_color | curses.A_BOLD,
+                )
 
             # empty part
-            win.addstr(san_y, san_start_x + 1 + san_filled,
-               san_empty_str[:max_line], curses.A_DIM)
+            win.addstr(
+                san_y,
+                san_start_x + 1 + san_filled,
+                san_empty_str[:max_line],
+                curses.A_DIM,
+            )
 
             # right bracket
-            win.addstr(san_y, san_start_x + 1 + san_filled + san_empty,
-               "]", curses.A_NORMAL)
+            win.addstr(
+                san_y, san_start_x + 1 + san_filled + san_empty, "]", curses.A_NORMAL
+            )
 
         except Exception:
             pass
-
-       
-                

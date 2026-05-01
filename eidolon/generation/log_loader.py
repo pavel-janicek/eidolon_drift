@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 
+
 def load_logs():
     here = Path(__file__).resolve()
     for up in range(1, 5):
@@ -26,4 +27,3 @@ def load_logs():
             return []
     print(f"[log_loader] no logs.json found", file=sys.stderr)
     return []
-    

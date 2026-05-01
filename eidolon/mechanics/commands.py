@@ -7,6 +7,7 @@ Handlers may modify game state and should return a short text result (string).
 
 import random
 
+
 def handle_command(game, raw_cmd: str) -> str:
     cmd = raw_cmd.strip()
     if not cmd:
@@ -41,7 +42,7 @@ def handle_command(game, raw_cmd: str) -> str:
             return "Usage: decrypt <object>"
         target = " ".join(args)
         return _cmd_decrypt(game, target)
-    
+
     if verb == "inspect-all":
         sector = game.map.get_sector(game.player.x, game.player.y)
         if sector is None:
@@ -58,10 +59,14 @@ def handle_command(game, raw_cmd: str) -> str:
         if not hasattr(game, "renderer") or game.renderer is None:
             return "No renderer available to apply a theme."
         ok = game.renderer.apply_theme(name)
-        return f"Theme set to {name}" if ok else f"Unknown theme '{name}'. Available: {', '.join(game.renderer.THEMES.keys())}"
+        return (
+            f"Theme set to {name}"
+            if ok
+            else f"Unknown theme '{name}'. Available: {', '.join(game.renderer.THEMES.keys())}"
+        )
 
-    
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
+
 
 def _cmd_help(game):
     lines = [
@@ -77,6 +82,7 @@ def _cmd_help(game):
     ]
     for line in lines:
         game.push_message(line)
+
 
 def _cmd_scan(game):
     sector = game.map.get_sector(game.player.x, game.player.y)
@@ -146,12 +152,14 @@ def _cmd_logs(game):
 def _normalize(s: str) -> str:
     # lower, strip punctuation, remove simple articles
     import re
+
     s = s.lower().strip()
     s = re.sub(r"[^\w\s\-]", "", s)  # remove punctuation except dash
     # remove common articles
     s = re.sub(r"\b(a|an|the)\b", "", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
 
 def _cmd_inspect(game, raw_target):
     """
@@ -191,8 +199,13 @@ def _cmd_inspect(game, raw_target):
                 return f"{o.get('title','log')}: {snippet} ... (fragmented)"
             return f"{o.get('title','log')}: {content}"
         if typ == "enc":
-            return o.get("description", "An encrypted data fragment. Try 'decrypt <name>'.")
-        return o.get("description", o.get("title", o.get("name", "You see nothing special about it.")))
+            return o.get(
+                "description", "An encrypted data fragment. Try 'decrypt <name>'."
+            )
+        return o.get(
+            "description",
+            o.get("title", o.get("name", "You see nothing special about it.")),
+        )
 
     # helper: open pager if available, returns True if pager used
     def _open_pager_if_possible(lines):
@@ -204,8 +217,7 @@ def _cmd_inspect(game, raw_target):
             # swallow pager errors and fallback to text return
             pass
         return False
-    
-    
+
     def _apply_on_inspect_effect(o, full_flag=False):
         on_inspect = o.get("on_inspect") or {}
         if not isinstance(on_inspect, dict):
@@ -231,8 +243,6 @@ def _cmd_inspect(game, raw_target):
             return True
         # další akce lze přidat zde
         return False
-    
-
 
     # collect objects and simple strings
     dict_objs = [o for o in sector.objects if isinstance(o, dict)]
@@ -249,10 +259,14 @@ def _cmd_inspect(game, raw_target):
                     # show snippet in messages and hint
                     snippet = obj.get("content", "")[:120]
                     game.push_message(f"{obj.get('title')}: {snippet} ... (fragmented)")
-                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    game.push_message(
+                        "Use 'inspect <name> full' to read the entire entry."
+                    )
                     return None
                 # full content
-                lines = [obj.get("title", "Log"), "-" * 40] + obj.get("content", "").splitlines()
+                lines = [obj.get("title", "Log"), "-" * 40] + obj.get(
+                    "content", ""
+                ).splitlines()
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
@@ -270,14 +284,18 @@ def _cmd_inspect(game, raw_target):
                 if o.get("fragmented") and not full_flag:
                     snippet = o.get("content", "")[:120]
                     game.push_message(f"{o.get('title')}: {snippet} ... (fragmented)")
-                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    game.push_message(
+                        "Use 'inspect <name> full' to read the entire entry."
+                    )
                     return None
-                lines = [o.get("title", "Log"), "-" * 40] + o.get("content", "").splitlines()
+                lines = [o.get("title", "Log"), "-" * 40] + o.get(
+                    "content", ""
+                ).splitlines()
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
-            _apply_on_inspect_effect(o, full_flag=full_flag)    
-            
+            _apply_on_inspect_effect(o, full_flag=full_flag)
+
             return _describe_object_short(o)
 
     # 2) substring match on name/title
@@ -289,9 +307,13 @@ def _cmd_inspect(game, raw_target):
                 if o.get("fragmented") and not full_flag:
                     snippet = o.get("content", "")[:120]
                     game.push_message(f"{o.get('title')}: {snippet} ... (fragmented)")
-                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    game.push_message(
+                        "Use 'inspect <name> full' to read the entire entry."
+                    )
                     return None
-                lines = [o.get("title", "Log"), "-" * 40] + o.get("content", "").splitlines()
+                lines = [o.get("title", "Log"), "-" * 40] + o.get(
+                    "content", ""
+                ).splitlines()
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
@@ -309,9 +331,13 @@ def _cmd_inspect(game, raw_target):
                 if o.get("fragmented") and not full_flag:
                     snippet = o.get("content", "")[:120]
                     game.push_message(f"{o.get('title')}: {snippet} ... (fragmented)")
-                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    game.push_message(
+                        "Use 'inspect <name> full' to read the entire entry."
+                    )
                     return None
-                lines = [o.get("title", "Log"), "-" * 40] + o.get("content", "").splitlines()
+                lines = [o.get("title", "Log"), "-" * 40] + o.get(
+                    "content", ""
+                ).splitlines()
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
@@ -330,6 +356,7 @@ def _cmd_inspect(game, raw_target):
     if logs:
         # try patterns like "log-1", "log1", "log 1"
         import re
+
         m = re.search(r"(\d+)$", target)
         if m:
             idx = int(m.group(1)) - 1
@@ -338,9 +365,13 @@ def _cmd_inspect(game, raw_target):
                 if o.get("fragmented") and not full_flag:
                     snippet = o.get("content", "")[:120]
                     game.push_message(f"{o.get('title')}: {snippet} ... (fragmented)")
-                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    game.push_message(
+                        "Use 'inspect <name> full' to read the entire entry."
+                    )
                     return None
-                lines = [o.get("title", "Log"), "-" * 40] + o.get("content", "").splitlines()
+                lines = [o.get("title", "Log"), "-" * 40] + o.get(
+                    "content", ""
+                ).splitlines()
                 if _open_pager_if_possible(lines):
                     return None
                 return "\n".join(lines)
@@ -353,7 +384,6 @@ def _normalize(s: str) -> str:
     return (s or "").strip().lower()
 
 
-
 def _cmd_decrypt(game, target):
     sector = game.map.get_sector(game.player.x, game.player.y)
     if sector is None:
@@ -362,7 +392,7 @@ def _cmd_decrypt(game, target):
     for o in sector.objects:
         if isinstance(o, dict) and o.get("type") == "enc":
             name = o.get("name", "").lower()
-            if target.lower() == name or target.lower() == o.get("title","").lower():
+            if target.lower() == name or target.lower() == o.get("title", "").lower():
                 # simple decrypt mini-game: random chance + sanity cost
                 difficulty = o.get("difficulty", 1)
                 roll = random.random()
@@ -375,7 +405,7 @@ def _cmd_decrypt(game, target):
                         "title": o.get("title", "Recovered Log"),
                         "description": "Recovered data fragment.",
                         "content": o.get("payload", "Fragment content."),
-                        "fragmented": False
+                        "fragmented": False,
                     }
                     sector.objects.append(revealed)
                     sector.objects.remove(o)
@@ -397,7 +427,12 @@ def _cmd_use(game, target):
         title = _normalize(obj.get("title", ""))
         typ = _normalize(obj.get("type", ""))
         obj_id = _normalize(obj.get("id", ""))
-        if target_norm == name or target_norm == title or target_norm == typ or target_norm == obj_id:
+        if (
+            target_norm == name
+            or target_norm == title
+            or target_norm == typ
+            or target_norm == obj_id
+        ):
             return True
         if target_norm in name or target_norm in title or target_norm in typ:
             return True
@@ -492,13 +527,14 @@ def _cmd_use(game, target):
             return f"You use the {obj.get('title','item')}. A chill runs down your spine. Sanity {amt}."
 
     # ESCAPE action
-    if action == "escape" or obj.get("name") == "escape-pod" or obj.get("id") == "escape-pod":
+    if (
+        action == "escape"
+        or obj.get("name") == "escape-pod"
+        or obj.get("id") == "escape-pod"
+    ):
         # only set flag here; do NOT call dialog directly
         game.awaiting_escape_confirm = True
         return None
 
     # fallback: no actionable on_use, but object matches target
     return f"You interact with the {obj.get('title') or obj.get('name') or obj.get('type')}. Nothing obvious happens."
-
-
-

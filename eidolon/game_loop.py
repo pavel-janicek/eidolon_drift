@@ -1,9 +1,9 @@
     # eidolon/game_loop.py
     # Cross-platform curses import
-    try:
+try:
         import curses
         import signal
-    except ImportError:
+except ImportError:
         try:
             # Try windows-curses for Windows
             import windows_curses as curses
@@ -62,17 +62,17 @@
                     return func(*args)
 
             curses = MockCurses()
-    from pathlib import Path
-    import random
-    from eidolon.generation.map_generator import MapGenerator
-    from eidolon.world import sector
-    from eidolon.world.player import Player
-    from eidolon.io.input_handler import InputHandler
-    from eidolon.io.output_renderer import OutputRenderer
-    from eidolon.mechanics.movement import move_player
-    from eidolon.mechanics import commands as cmdmod
-    from eidolon.mechanics.events import EventEngine
-    from eidolon.mechanics.event_loader import load_event_defs
+from pathlib import Path
+import random
+from eidolon.generation.map_generator import MapGenerator
+from eidolon.world import sector
+from eidolon.world.player import Player
+from eidolon.io.input_handler import InputHandler
+from eidolon.io.output_renderer import OutputRenderer
+from eidolon.mechanics.movement import move_player
+from eidolon.mechanics import commands as cmdmod
+from eidolon.mechanics.events import EventEngine
+from eidolon.mechanics.event_loader import load_event_defs
 
 
     class Game:

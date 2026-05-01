@@ -65,7 +65,7 @@ import textwrap
 class DescriptionRenderer:
     def __init__(self, output_renderer):
         self.output_renderer = output_renderer
-    
+
     def render(self):
         """
         Vykreslí obsah pravého (description) okna včetně ambientní zprávy.
@@ -87,7 +87,9 @@ class DescriptionRenderer:
                 return
 
             # Get current sector
-            sector = game.map.get_sector(game.player.x, game.player.y) if game.map else None
+            sector = (
+                game.map.get_sector(game.player.x, game.player.y) if game.map else None
+            )
 
             desc_lines = []
             if sector:
@@ -114,7 +116,9 @@ class DescriptionRenderer:
                 if env_note:
                     desc_lines.append("")
                     desc_lines.append("Environment:")
-                    desc_lines.extend(self.output_renderer.wrap_text(env_note, maxx - 6))
+                    desc_lines.extend(
+                        self.output_renderer.wrap_text(env_note, maxx - 6)
+                    )
 
                 # Objects summary
                 if getattr(sector, "objects", None):
@@ -122,10 +126,17 @@ class DescriptionRenderer:
                     desc_lines.append("Objects:")
                     for obj in sector.objects[:5]:
                         if isinstance(obj, dict):
-                            label = obj.get("name") or obj.get("description") or obj.get("type") or str(obj)
+                            label = (
+                                obj.get("name")
+                                or obj.get("description")
+                                or obj.get("type")
+                                or str(obj)
+                            )
                         else:
                             label = str(obj)
-                        desc_lines.extend(self.output_renderer.wrap_text(f"  - {label}", maxx - 6))
+                        desc_lines.extend(
+                            self.output_renderer.wrap_text(f"  - {label}", maxx - 6)
+                        )
                     if len(sector.objects) > 5:
                         desc_lines.append(f"  ...and {len(sector.objects) - 5} more")
             else:
@@ -139,9 +150,9 @@ class DescriptionRenderer:
                 desc_lines.extend(self.output_renderer.wrap_text(ambient_msg, maxx - 4))
 
             # Render lines
-            for i, line in enumerate(desc_lines[:maxy - 2]):
+            for i, line in enumerate(desc_lines[: maxy - 2]):
                 try:
-                    win.addstr(1 + i, 2, line[:maxx - 4])
+                    win.addstr(1 + i, 2, line[: maxx - 4])
                 except Exception:
                     continue
 

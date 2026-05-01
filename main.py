@@ -12,6 +12,7 @@ except ImportError:
     except ImportError:
         # Fallback: create a mock curses module
         import sys
+
         class MockCurses:
             COLOR_CYAN = 1
             COLOR_YELLOW = 2
@@ -68,7 +69,10 @@ except ImportError:
                     return func(*args)
 
         curses = MockCurses()
-        print("Warning: Curses not available. Using fallback text interface.", file=sys.stderr)
+        print(
+            "Warning: Curses not available. Using fallback text interface.",
+            file=sys.stderr,
+        )
 
 from eidolon.game_loop import Game
 
@@ -90,7 +94,12 @@ except Exception:
     MapGenerator = None
 
 try:
-    from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE
+    from eidolon.config import (
+        MIN_MAP_WIDTH,
+        MIN_MAP_HEIGHT,
+        DEFAULT_BASE_DENSITY,
+        DEFAULT_MIN_DISTANCE,
+    )
 except Exception:
     MIN_MAP_WIDTH = 10
     MIN_MAP_HEIGHT = 5
@@ -174,6 +183,7 @@ def _ensure_player_on_map(game):
         # try to import Player class if available
         try:
             from eidolon.world.player import Player  # type: ignore
+
             game.player = Player(x=0, y=0)
             p = game.player
         except Exception:
@@ -184,6 +194,7 @@ def _ensure_player_on_map(game):
                     self.y = y
                     self.health = 100
                     self.max_health = 100
+
             game.player = _P(0, 0)
             p = game.player
 
@@ -220,6 +231,7 @@ def _run(stdscr):
         except Exception as e:
             # non-fatal: log to stderr and continue
             import sys
+
             print(f"[mapgen] generation failed: {e}", file=sys.stderr)
             generated_map = None
 
@@ -246,7 +258,7 @@ def _run(stdscr):
             game.renderer = OutputRenderer(stdscr, game.map, game.player, game)
             try:
                 game.renderer.render()
-                #game.push_message("[debug] renderer.render() called once from main")
+                # game.push_message("[debug] renderer.render() called once from main")
             except Exception as e:
                 game.push_message(f"[debug] renderer.render() failed: {e}")
         except Exception as e:
@@ -266,10 +278,11 @@ def _run(stdscr):
                 pass
     else:
         try:
-            game.push_message("[debug] InputHandler not found; using Game's internal input loop")
+            game.push_message(
+                "[debug] InputHandler not found; using Game's internal input loop"
+            )
         except Exception:
             pass
-
 
     # run main loop
     try:
@@ -282,7 +295,9 @@ def _run(stdscr):
     except Exception as exc:
         _safe_write_crash(exc)
         try:
-            game.push_message("[fatal] Unhandled exception occurred. See crash.log for details.")
+            game.push_message(
+                "[fatal] Unhandled exception occurred. See crash.log for details."
+            )
         except Exception:
             pass
 
@@ -290,13 +305,14 @@ def _run(stdscr):
 def main():
     try:
         # Check if we have real curses or mock curses
-        if hasattr(curses, 'wrapper') and not getattr(curses, 'is_mock', False):
+        if hasattr(curses, "wrapper") and not getattr(curses, "is_mock", False):
             # Real curses available
             curses.wrapper(_run)
         else:
             # Mock curses or no curses - run in text mode
             try:
                 from eidolon.config import GAME_VERSION
+
                 version = GAME_VERSION
             except:
                 version = "0.9.0"
@@ -317,7 +333,7 @@ def main():
             while True:
                 try:
                     cmd = input("> ").strip()
-                    if cmd.lower() in ('quit', 'q', 'exit'):
+                    if cmd.lower() in ("quit", "q", "exit"):
                         break
                     if cmd:
                         result = game.handle_command(cmd)

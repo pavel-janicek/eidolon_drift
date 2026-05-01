@@ -29,21 +29,32 @@ except Exception:
 
 # detect_input is expected to exist (your module). Provide safe fallback.
 try:
-    from eidolon.io.detect_input import backend_name, list_controllers, start_monitoring, stop_monitoring
+    from eidolon.io.detect_input import (
+        backend_name,
+        list_controllers,
+        start_monitoring,
+        stop_monitoring,
+    )
 except Exception:
+
     def backend_name() -> Optional[str]:
         return None
+
     def list_controllers() -> List[Dict]:
         return []
+
     def start_monitoring(cb, poll_interval=1.0):
         raise RuntimeError("detect_input.start_monitoring not available")
+
     def stop_monitoring():
         pass
+
 
 # try pygame (SDL) for event-driven controller input
 _PYGAME = None
 try:
     import pygame as _pg
+
     _PYGAME = _pg
 except Exception:
     _PYGAME = None
@@ -52,6 +63,7 @@ except Exception:
 _EVDEV = None
 try:
     import evdev as _ev
+
     _EVDEV = _ev
 except Exception:
     _EVDEV = None
@@ -67,12 +79,20 @@ PS4_BUTTON_MAP = {
     "x": 0,
     "circle": 1,
     "triangle": 3,
-    "l1": 9, "r1": 10, "l2": 6, "r2": 7,
-    "share": 8, "options": 9, "l3": 10, "r3": 11, "ps": 12, "touch": 13,
+    "l1": 9,
+    "r1": 10,
+    "l2": 6,
+    "r2": 7,
+    "share": 8,
+    "options": 9,
+    "l3": 10,
+    "r3": 11,
+    "ps": 12,
+    "touch": 13,
 }
 PS4_AXIS_MAP = {
-    "l2_axis": 4,   
-    "r2_axis": 5,   
+    "l2_axis": 4,
+    "r2_axis": 5,
 }
 
 DEFAULT_ACTIONS = {
@@ -84,9 +104,11 @@ DEFAULT_ACTIONS = {
     "inspect": "inspect",
 }
 
+
 # --- helpers --------------------------------------------------------------
 def _clamp(v: float, lo: float = -1.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, v))
+
 
 # --- InputHandler ---------------------------------------------------------
 class InputHandler:
@@ -95,14 +117,20 @@ class InputHandler:
     Provide an on_action callback: on_action(action_name: str, payload: Optional[dict])
     """
 
-    def __init__(self, on_action_or_game=None, stdscr=None, deadzone: float = DEFAULT_DEADZONE):
+    def __init__(
+        self, on_action_or_game=None, stdscr=None, deadzone: float = DEFAULT_DEADZONE
+    ):
         """
         Backward-compatible constructor:
         - legacy call: InputHandler(stdscr)  -> on_action_or_game is curses window
         - new call:    InputHandler(on_action_callable, stdscr)
         """
         # detect legacy usage: first arg is curses window (has getch)
-        if on_action_or_game is not None and stdscr is None and hasattr(on_action_or_game, "getch"):
+        if (
+            on_action_or_game is not None
+            and stdscr is None
+            and hasattr(on_action_or_game, "getch")
+        ):
             # legacy: InputHandler(stdscr)
             self.stdscr = on_action_or_game
             self.on_action = None
@@ -119,7 +147,6 @@ class InputHandler:
         self._last_move = (0.0, 0.0)
         self._hotplug_thread = None
         self._event_queue: "queue.Queue[dict]" = queue.Queue()
-
 
         # mapping: action -> ("button", index) or ("axis_pos", axis_index, threshold)
         self.button_map = {
@@ -188,20 +215,20 @@ class InputHandler:
 
         # arrow keys
         try:
-            if ch == curses.KEY_UP or ch in (ord('w'), ord('W')):
+            if ch == curses.KEY_UP or ch in (ord("w"), ord("W")):
                 return "UP"
-            if ch == curses.KEY_DOWN or ch in (ord('s'), ord('S')):
+            if ch == curses.KEY_DOWN or ch in (ord("s"), ord("S")):
                 return "DOWN"
-            if ch == curses.KEY_LEFT or ch in (ord('a'), ord('A')):
+            if ch == curses.KEY_LEFT or ch in (ord("a"), ord("A")):
                 return "LEFT"
-            if ch == curses.KEY_RIGHT or ch in (ord('d'), ord('D')):
+            if ch == curses.KEY_RIGHT or ch in (ord("d"), ord("D")):
                 return "RIGHT"
         except Exception:
             # curses may be None in some envs
             pass
 
         # quick command entry: ':' then read line (blocking until Enter)
-        if ch == ord(':'):
+        if ch == ord(":"):
             try:
                 # switch to blocking read for the line
                 self.stdscr.nodelay(False)
@@ -210,24 +237,24 @@ class InputHandler:
                 curses.noecho()
                 return "CMD:" + s
             except Exception:
-                    try:
-                        curses.noecho()
-                    except Exception:
-                        pass
+                try:
+                    curses.noecho()
+                except Exception:
+                    pass
             return None
 
         # single-letter shortcuts mapped to commands (helpful)
-        if ch in (ord('h'), ord('H')):
+        if ch in (ord("h"), ord("H")):
             return "CMD:help"
-        if ch in (ord('q'), ord('Q')):
+        if ch in (ord("q"), ord("Q")):
             return "QUIT_REQUEST"
-        if ch in (ord('x'), ord('X')):
+        if ch in (ord("x"), ord("X")):
             return "CMD:use"
-        if ch in (ord('i'), ord('I')):
+        if ch in (ord("i"), ord("I")):
             return "CMD:inspect"
-        if ch in (ord('l'), ord('L')):
+        if ch in (ord("l"), ord("L")):
             return "CMD:logs"
-        if ch in (ord('c'), ord('C')):
+        if ch in (ord("c"), ord("C")):
             return "CMD:scan"
 
         # fallback: if printable, return as command string (so old code can parse)
@@ -237,7 +264,6 @@ class InputHandler:
                 return "CMD:" + chs
 
         return None
-        
 
     # --- hotplug callback -------------------------------------------------
     def _hotplug_cb(self, ev_type: str, info: dict):
@@ -303,8 +329,16 @@ class InputHandler:
     def _handle_pygame_event(self, ev):
         if ev.type == _PYGAME.JOYAXISMOTION:
             # read left stick axes by configured indices
-            lx = self._pygame_joystick.get_axis(PS4_AXIS_MAP.get("left_x", 0)) if PS4_AXIS_MAP.get("left_x") is not None else 0.0
-            ly = self._pygame_joystick.get_axis(PS4_AXIS_MAP.get("left_y", 1)) if PS4_AXIS_MAP.get("left_y") is not None else 0.0
+            lx = (
+                self._pygame_joystick.get_axis(PS4_AXIS_MAP.get("left_x", 0))
+                if PS4_AXIS_MAP.get("left_x") is not None
+                else 0.0
+            )
+            ly = (
+                self._pygame_joystick.get_axis(PS4_AXIS_MAP.get("left_y", 1))
+                if PS4_AXIS_MAP.get("left_y") is not None
+                else 0.0
+            )
             mx, my = self._axis_to_move(lx, ly)
             my = -my  # invert Y if controller reports up as -1
             if (mx, my) != self._last_move:
@@ -324,7 +358,7 @@ class InputHandler:
             self._using_controller = False
 
     def _check_axis_actions(self):
-    # check axis-based mappings (e.g., triggers)
+        # check axis-based mappings (e.g., triggers)
         for action, spec in self.button_map.items():
             if spec[0] == "axis_pos":
                 _, axis_idx, threshold = spec
@@ -340,7 +374,6 @@ class InputHandler:
                         self._dispatch_action(action)
                 except Exception:
                     logger.debug("InputHandler: axis read failed", exc_info=True)
-
 
     def _handle_button_down(self, btn_index: int):
         # direct mapping
@@ -381,7 +414,9 @@ class InputHandler:
         if devices and not self._using_controller:
             self._using_controller = True
             self.controller_info = devices[0]
-            logger.info("InputHandler: evdev controller detected %s", self.controller_info)
+            logger.info(
+                "InputHandler: evdev controller detected %s", self.controller_info
+            )
         elif not devices and self._using_controller:
             self._using_controller = False
             self.controller_info = None
@@ -463,7 +498,8 @@ class InputHandler:
                     return None
         except Exception:
             logger.exception("InputHandler: process_once failed")
-            return None    
+            return None
+
 
 # --- CLI helpers for mapping and monitoring -------------------------------
 def _map_test_loop(poll_interval: float = 0.01):
@@ -484,7 +520,14 @@ def _map_test_loop(poll_interval: float = 0.01):
     j = _PYGAME.joystick.Joystick(0)
     j.init()
     print("Joystick name:", j.get_name())
-    print("Axes:", j.get_numaxes(), "Buttons:", j.get_numbuttons(), "Hats:", j.get_numhats())
+    print(
+        "Axes:",
+        j.get_numaxes(),
+        "Buttons:",
+        j.get_numbuttons(),
+        "Hats:",
+        j.get_numhats(),
+    )
     print("Press buttons or move sticks; Ctrl-C to exit.")
     try:
         while True:
@@ -493,6 +536,7 @@ def _map_test_loop(poll_interval: float = 0.01):
             time.sleep(poll_interval)
     except KeyboardInterrupt:
         print("map-test exiting")
+
 
 def _monitor_cli(poll_interval: float = 1.0):
     """
@@ -514,12 +558,22 @@ def _monitor_cli(poll_interval: float = 1.0):
     except KeyboardInterrupt:
         print("monitor exiting")
 
+
 # --- module CLI ----------------------------------------------------------
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="InputHandler debug CLI")
-    parser.add_argument("--map-test", action="store_true", help="Run pygame event map test (prints events)")
-    parser.add_argument("--monitor", action="store_true", help="Monitor hotplug via detect_input.list_controllers")
+    parser.add_argument(
+        "--map-test",
+        action="store_true",
+        help="Run pygame event map test (prints events)",
+    )
+    parser.add_argument(
+        "--monitor",
+        action="store_true",
+        help="Monitor hotplug via detect_input.list_controllers",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG)
@@ -529,7 +583,9 @@ if __name__ == "__main__":
         _monitor_cli()
     else:
         # quick smoke: instantiate handler and print backend
-        def cb(a, p): print("ACTION:", a, p)
+        def cb(a, p):
+            print("ACTION:", a, p)
+
         ih = InputHandler(cb)
         print("backend:", backend_name())
         try:

@@ -42,6 +42,7 @@ _monitor_poll_interval = 1.0  # seconds
 # --- backend detection at import time --------------------------------------
 try:
     import pygame as _pg
+
     _pg.init()
     _pg.joystick.init()
     _PYGAME = _pg
@@ -52,6 +53,7 @@ except Exception:
     # try evdev (Linux)
     try:
         import evdev as _ev
+
         _EVDEV = _ev
         _BACKEND = "evdev"
         logger.debug("detect_input: using evdev backend")
@@ -60,6 +62,7 @@ except Exception:
         # try hid (hidapi)
         try:
             import hid as _hid  # hidapi python binding
+
             _HID = _hid
             _BACKEND = "hid"
             logger.debug("detect_input: using hid backend")
@@ -92,7 +95,9 @@ def _list_pygame() -> List[Dict]:
                 }
                 res.append(info)
             except Exception:
-                logger.exception("detect_input: pygame joystick init failed for index %s", i)
+                logger.exception(
+                    "detect_input: pygame joystick init failed for index %s", i
+                )
     except Exception:
         logger.exception("detect_input: pygame get_count failed")
     return res
@@ -106,6 +111,7 @@ def _list_evdev() -> List[Dict]:
         return res
     try:
         from evdev import list_devices, InputDevice, ecodes
+
         for path in list_devices():
             try:
                 dev = InputDevice(path)
@@ -117,19 +123,30 @@ def _list_evdev() -> List[Dict]:
                         code_name = code[0]
                     else:
                         code_name = code
-                    if "ABS" in str(code_name) or "BTN_GAMEPAD" in str(code_name) or "BTN_JOYSTICK" in str(code_name):
+                    if (
+                        "ABS" in str(code_name)
+                        or "BTN_GAMEPAD" in str(code_name)
+                        or "BTN_JOYSTICK" in str(code_name)
+                    ):
                         is_gamepad = True
                         break
                 if is_gamepad:
-                    res.append({
-                        "id": f"evdev:{path}",
-                        "name": dev.name,
-                        "backend": "evdev",
-                        "path": path,
-                        "info": {"phys": getattr(dev, "phys", None), "uniq": getattr(dev, "uniq", None)}
-                    })
+                    res.append(
+                        {
+                            "id": f"evdev:{path}",
+                            "name": dev.name,
+                            "backend": "evdev",
+                            "path": path,
+                            "info": {
+                                "phys": getattr(dev, "phys", None),
+                                "uniq": getattr(dev, "uniq", None),
+                            },
+                        }
+                    )
             except Exception:
-                logger.debug("detect_input: skipping evdev device %s", path, exc_info=True)
+                logger.debug(
+                    "detect_input: skipping evdev device %s", path, exc_info=True
+                )
     except Exception:
         logger.exception("detect_input: evdev listing failed")
     return res
@@ -144,13 +161,20 @@ def _list_hid() -> List[Dict]:
     try:
         for d in hid.enumerate():
             try:
-                res.append({
-                    "id": f"hid:{d.get('vendor_id')}:{d.get('product_id')}:{d.get('path')}",
-                    "name": d.get("product_string") or d.get("manufacturer_string") or "HID Device",
-                    "backend": "hid",
-                    "path": d.get("path"),
-                    "info": {"vendor_id": d.get("vendor_id"), "product_id": d.get("product_id")}
-                })
+                res.append(
+                    {
+                        "id": f"hid:{d.get('vendor_id')}:{d.get('product_id')}:{d.get('path')}",
+                        "name": d.get("product_string")
+                        or d.get("manufacturer_string")
+                        or "HID Device",
+                        "backend": "hid",
+                        "path": d.get("path"),
+                        "info": {
+                            "vendor_id": d.get("vendor_id"),
+                            "product_id": d.get("product_id"),
+                        },
+                    }
+                )
             except Exception:
                 logger.debug("detect_input: hid enumerate item failed", exc_info=True)
     except Exception:
@@ -220,7 +244,9 @@ def _monitor_loop(poll_interval: float):
     logger.debug("detect_input: monitor loop exiting")
 
 
-def start_monitoring(callback: Callable[[str, Dict], None], poll_interval: float = 1.0) -> None:
+def start_monitoring(
+    callback: Callable[[str, Dict], None], poll_interval: float = 1.0
+) -> None:
     """
     Start background monitoring for device add/remove events.
     callback(event_type, info) will be called with event_type in ("added","removed").
@@ -232,7 +258,9 @@ def start_monitoring(callback: Callable[[str, Dict], None], poll_interval: float
     _monitor_callback = callback
     _monitor_poll_interval = float(poll_interval)
     _monitor_stop.clear()
-    _monitor_thread = threading.Thread(target=_monitor_loop, args=(poll_interval,), daemon=True)
+    _monitor_thread = threading.Thread(
+        target=_monitor_loop, args=(poll_interval,), daemon=True
+    )
     _monitor_thread.start()
     logger.debug("detect_input: monitoring started")
 
@@ -250,8 +278,11 @@ def stop_monitoring() -> None:
 # --- simple CLI test when run as script -----------------------------------
 if __name__ == "__main__":
     import argparse, json
+
     parser = argparse.ArgumentParser(description="Detect input controllers (debug)")
-    parser.add_argument("--monitor", action="store_true", help="Run monitor loop and print events")
+    parser.add_argument(
+        "--monitor", action="store_true", help="Run monitor loop and print events"
+    )
     args = parser.parse_args()
 
     print("detect_input backend:", backend_name())
@@ -260,8 +291,10 @@ if __name__ == "__main__":
     print(json.dumps(devices, indent=2, ensure_ascii=False))
 
     if args.monitor:
+
         def cb(ev, info):
             print(f"[monitor] {ev}: {info}")
+
         start_monitoring(cb, poll_interval=1.0)
         try:
             while True:
