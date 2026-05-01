@@ -10,6 +10,7 @@ except ImportError:
     except ImportError:
         # Fallback: create a mock curses module for basic functionality
         import sys
+
         class MockCurses:
             COLOR_CYAN = 1
             COLOR_YELLOW = 2
@@ -136,8 +137,10 @@ class Game:
         # tick and ambient systems
         self.tick_counter = 0
         # ambient tuning (can be overridden later)
-        self.ambient_spawn_interval = getattr(self, "ambient_spawn_interval", 3000)
-        self.ambient_message_interval = getattr(self, "ambient_message_interval", 200)
+        self.ambient_spawn_interval = getattr(
+            self, "ambient_spawn_interval", 3000)
+        self.ambient_message_interval = getattr(
+            self, "ambient_message_interval", 200)
         self.current_ambient_message = None
 
         # load ambient messages (non-fatal)
@@ -165,8 +168,6 @@ class Game:
         self.awaiting_quit_confirm = False
         # stav pro escape dialog
         self.awaiting_escape_confirm = False
-
-
 
     def push_message(self, text):
         if not hasattr(self, "messages"):
@@ -201,7 +202,6 @@ class Game:
                 self.push_message("Quit game? (y/n)")
                 continue
 
-
             if key.startswith("CMD:"):
                 cmd = key[4:]
                 result = cmdmod.handle_command(self, cmd)
@@ -235,7 +235,8 @@ class Game:
                 try:
                     self.renderer.render()
                 except Exception as e:
-                    self.push_message(f"[debug] initial renderer.render() failed: {e}")
+                    self.push_message(
+                        f"[debug] initial renderer.render() failed: {e}")
 
             while self.running:
 
@@ -253,7 +254,8 @@ class Game:
                     try:
                         self.renderer.render()
                     except Exception as e:
-                        self.push_message(f"[debug] renderer.render error: {e}")
+                        self.push_message(
+                            f"[debug] renderer.render error: {e}")
 
                 # input
                 if self.input_handler:
@@ -266,24 +268,8 @@ class Game:
                     self.push_message("Quit game? (y/n)")
                     continue
 
-                if token and token.startswith("CMD:"):
-                    cmd = token[4:]
-                    result = cmdmod.handle_command(self, cmd)
-                    if result:
-                        self.push_message(result)
-                    self.tick(action_type="command")
-                    continue
-
-                # movement
-                if token in ("UP", "DOWN", "LEFT", "RIGHT"):
-                    moved = move_player(self.map, self.player, token)
-                    if moved:
-                        sec = self.map.get_sector(self.player.x, self.player.y)
-                        #self.push_message(f"Moved to {sec.name}.")
-                    else:
-                        self.push_message("Cannot move there.")
-                    self.tick(action_type="move")
-                    continue
+                if token is not None:
+                    self.handle_token(token)
 
                 # tick
                 self.tick()
@@ -296,7 +282,130 @@ class Game:
         except Exception as e:
             self.push_message(f"[debug] Game.run error: {e}")
 
+    def handle_token(self, token):
+        # token může být None nebo dict
+        if not token:
+            # nic k zpracování
+            pass
+        else:
+            ttype = token.get("type")
 
+            # --- COMMANDS ----------------------------------------------------
+            if ttype == "command":
+                cmd = token.get("cmd", "").strip()
+                if cmd:
+                    result = cmdmod.handle_command(self, cmd)
+                    # handle_command může vrátit:
+                    # - None (renderer/pager handled display)
+                    # - string (text to push)
+                    # - list of lines (push each)
+                    if result is None:
+                        # pager handled it or nothing to show
+                        pass
+                    elif isinstance(result, list):
+                        for line in result:
+                            self.push_message(line)
+                    else:
+                        # string
+                        self.push_message(str(result))
+                # tick after command
+                self.tick(action_type="command")
+                
+
+            # --- ACTIONS (face buttons, help, ...) --------------------------
+            if ttype == "action":
+                name = token.get("name")
+                if name == "use":
+                    # call existing use logic (example)
+                    result = cmdmod.handle_command(self, "use")
+
+                elif name == "scan":
+                    result = cmdmod.handle_command(self, "scan")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
+                        else:
+                            self.push_message(result)
+                elif name == "logs":
+                    result = cmdmod.handle_command(self, "logs")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
+                        else:
+                            self.push_message(result)
+                elif name == "inspect":
+                    # inspect bez argumentu -> může otevřít UI nebo pushnout hint
+                    # adaptuj podle toho, jak inspect má být voláno
+                    result = cmdmod.handle_command(self, "inspect")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
+                    else:
+                        self.push_message(result)
+                elif name == "help":
+                    # pomocná akce
+                    result = cmdmod.handle_command(self, "help")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
+                        else:
+                            self.push_message(result)
+                else:
+                    # další akce
+                    logger.debug("Unhandled action token: %s", token)
+                self.tick(action_type="action")
+                
+
+            # --- MOVEMENT (analog vector) ------------------------------------
+            if ttype == "move":
+                x = float(token.get("x", 0.0))
+                y = float(token.get("y", 0.0))
+                # kvantizuj na čtyři směry nebo použij analogové pohyby
+                # jednoduchý příklad: pokud absolutní hodnota > 0.5 považuj za směr
+                if abs(x) < 0.2 and abs(y) < 0.2:
+                    # drobné posuny ignoruj
+                    moved = False
+                else:
+                    # preferuj osu s větší absolutní hodnotou pro diskretní pohyb
+                    if abs(x) > abs(y):
+                        dir_token = "RIGHT" if x > 0 else "LEFT"
+                    else:
+                        dir_token = "DOWN" if y > 0 else "UP"
+                    moved = move_player(self.map, self.player, dir_token)
+                if moved:
+                    sec = self.map.get_sector(self.player.x, self.player.y)
+                else:
+                    # pokud se nepohnul, můžeš ignorovat nebo pushnout zprávu
+                    # self.push_message("Cannot move there.")
+                    pass
+                self.tick(action_type="move")
+        
+
+            # --- MOVEMENT (discrete dpad) -------------------------------------
+            if ttype == "move_dir":
+                dir_token = token.get("dir")
+                if dir_token in ("UP", "DOWN", "LEFT", "RIGHT"):
+                    moved = move_player(self.map, self.player, dir_token)
+                    if not moved:
+                        self.push_message("Cannot move there.")
+                    self.tick(action_type="move")
+            
+
+            # --- CONTROL (e.g. Ctrl+C) ---------------------------------------
+            if ttype == "control":
+                key = token.get("key")
+                if key == "SIGINT" or key == "QUIT":
+                    # zachovej původní chování pro Ctrl+C
+                    self.awaiting_quit_confirm = True
+                    self._handle_quit_confirm()
+            
+
+            # --- fallback -----------------------------------------------------
+            logger.debug("Unknown token received: %r", token)
 
     def tick(self, action_type="move"):
         sector = self.map.get_sector(self.player.x, self.player.y)
@@ -341,16 +450,16 @@ class Game:
         if sector and getattr(sector, "dark", False):
             if random.random() < 0.05:  # 5% chance per tick
                 self.player.lose_sanity(1)
-        
+
         # --- SANITY RECOVERY: MEDBAY ---
         if not hasattr(self, "_sanity_medbay_counter"):
-                self._sanity_medbay_counter = 0
+            self._sanity_medbay_counter = 0
 
         sector = self.map.get_sector(self.player.x, self.player.y)
 
         if sector and sector.type == "MEDBAY":
             # medbay slowly restores sanity
-        
+
             self._sanity_medbay_counter += 1
 
         # restore 1 sanity every 5 ticks
@@ -382,8 +491,6 @@ class Game:
         if self._ambient_tick_counter >= self.ambient_spawn_interval:
             self.tick_spawn_ambient()
             self._ambient_tick_counter = 0
-        
-        
 
     def handle_command(self, cmd):
         try:
@@ -405,7 +512,7 @@ class Game:
         if not getattr(self, "map", None):
             return
         attempts = 8
-        for _ in range(self.rng.randint(1,2)):
+        for _ in range(self.rng.randint(1, 2)):
             rx = self.rng.randrange(0, self.map.width)
             ry = self.rng.randrange(0, self.map.height)
             sec = self.map.grid.get((rx, ry))
@@ -416,16 +523,18 @@ class Game:
                 continue
             # choose a filler template id list (match ids you added)
             filler_ids = ["debris_small", "battery_pack", "note_scrap"]
-            tpl = self.map.generator.template_index.get(self.rng.choice(filler_ids))
+            tpl = self.map.generator.template_index.get(
+                self.rng.choice(filler_ids))
             if not tpl:
                 # fallback: pick any template with small weight
-                candidates = [t for t in self.map.generator.templates if t.get("kind")=="template" and t.get("type") in ("debris","item","log")]
+                candidates = [t for t in self.map.generator.templates if t.get(
+                    "kind") == "template" and t.get("type") in ("debris", "item", "log")]
                 if not candidates:
                     continue
                 tpl = self.rng.choice(candidates)
             obj = self.map.generator._instantiate_from_template(tpl, sec)
             sec.objects.append(obj)
-    
+
     def _load_ambient_messages(self, path: str = None):
         """
         Robustní loader ambientních zpráv.
@@ -434,7 +543,8 @@ class Game:
         - debug: vypisuje do stderr, co našel / proč selhal.
         """
         from pathlib import Path
-        import json, sys
+        import json
+        import sys
 
         self.ambient_messages = []
 
@@ -443,9 +553,11 @@ class Game:
         if path:
             candidates.append(Path(path))
         # data/ sibling of the eidolon package directory (installed layout)
-        candidates.append(Path(__file__).resolve().parent / "data" / "ambient_messages.json")
+        candidates.append(Path(__file__).resolve().parent /
+                          "data" / "ambient_messages.json")
         # one level above the package (source tree / legacy installed layout)
-        candidates.append(Path(__file__).resolve().parent.parent / "data" / "ambient_messages.json")
+        candidates.append(Path(__file__).resolve(
+        ).parent.parent / "data" / "ambient_messages.json")
         # cwd/data (fallback for running from project root)
         candidates.append(Path.cwd() / "data" / "ambient_messages.json")
 
@@ -463,22 +575,27 @@ class Game:
                 with p.open("r", encoding="utf-8") as f:
                     data = json.load(f)
                 if isinstance(data, list):
-                    msgs = [str(s).strip() for s in data if isinstance(s, str) and s.strip()]
+                    msgs = [str(s).strip()
+                            for s in data if isinstance(s, str) and s.strip()]
                     if msgs:
                         self.ambient_messages = msgs
-                        print(f"[debug] loaded {len(msgs)} ambient messages from {p}", file=sys.stderr)
+                        print(
+                            f"[debug] loaded {len(msgs)} ambient messages from {p}", file=sys.stderr)
                         return
                     else:
-                        print(f"[debug] file {p} parsed but contains no valid strings", file=sys.stderr)
+                        print(
+                            f"[debug] file {p} parsed but contains no valid strings", file=sys.stderr)
                 else:
-                    print(f"[debug] file {p} parsed but top-level JSON is not a list", file=sys.stderr)
+                    print(
+                        f"[debug] file {p} parsed but top-level JSON is not a list", file=sys.stderr)
             except Exception as e:
-                print(f"[debug] failed to read/parse {p}: {e}", file=sys.stderr)
+                print(
+                    f"[debug] failed to read/parse {p}: {e}", file=sys.stderr)
 
         # nothing found
-        print(f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
+        print(
+            f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
         self.ambient_messages = []
-
 
     def debug_emit_ambient(self):
         if not getattr(self, "ambient_messages", None):
@@ -486,17 +603,18 @@ class Game:
             print("[debug] no ambient messages loaded", file=sys.stderr)
             return
         # choose using game RNG for reproducibility
-        msg = self.rng.choice(self.ambient_messages) if getattr(self, "rng", None) else self.ambient_messages[0]
+        msg = self.rng.choice(self.ambient_messages) if getattr(
+            self, "rng", None) else self.ambient_messages[0]
         # debug print to stderr and push to in‑game messages
         import sys
         print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
         self.push_message(msg)
 
     def _handle_quit_confirm(self):
-         if not self.awaiting_quit_confirm:
-             self.awaiting_quit_confirm = True
-         self._show_quit_dialog()
-        
+        if not self.awaiting_quit_confirm:
+            self.awaiting_quit_confirm = True
+        self._show_quit_dialog()
+
     def _show_quit_dialog(self):
         """
         Vykreslí modální quit dialog doprostřed obrazovky.
@@ -513,7 +631,8 @@ class Game:
         win = curses.newwin(dialog_h, dialog_w, y0, x0)
         win.border()
 
-        win.addstr(1, (dialog_w - len("Quit the game?")) // 2, "Quit the game?")
+        win.addstr(1, (dialog_w - len("Quit the game?")) //
+                   2, "Quit the game?")
         win.addstr(3, (dialog_w - len("[Y]es   [N]o")) // 2, "[Y]es   [N]o")
 
         win.refresh()
@@ -526,7 +645,6 @@ class Game:
             if ch in (ord('n'), ord('N')):
                 self.awaiting_quit_confirm = False
             return
-    
 
     def _show_escape_dialog(self):
         """
@@ -538,9 +656,12 @@ class Game:
         except Exception:
             # fallback: textové zprávy pokud není stdscr
             try:
-                self.push_message("You successfully used the escape pod and escaped to safety.")
-                self.push_message(f"Final Health: {getattr(self.player, 'health', 'N/A')}")
-                self.push_message(f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}")
+                self.push_message(
+                    "You successfully used the escape pod and escaped to safety.")
+                self.push_message(
+                    f"Final Health: {getattr(self.player, 'health', 'N/A')}")
+                self.push_message(
+                    f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}")
             except Exception:
                 pass
             # ukončí hru
@@ -561,7 +682,8 @@ class Game:
 
         title = " Escape Pod "
         try:
-            win.addstr(0, max(1, (dialog_w - len(title)) // 2), title, curses.A_BOLD)
+            win.addstr(0, max(1, (dialog_w - len(title)) // 2),
+                       title, curses.A_BOLD)
         except Exception:
             pass
 
@@ -590,7 +712,8 @@ class Game:
                 ch = win.getch()
             except KeyboardInterrupt:
                 # ignoruj opakované Ctrl+C během dialogu
-                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                self.push_message(
+                    "[debug] escape dialog interrupted by Ctrl+C")
                 continue
             except Exception as e:
                 # pokud getch selže, ukončí hru
@@ -606,7 +729,6 @@ class Game:
             if ch != -1:
                 self.running = False
             return
-
 
     def _handle_escape_confirm(self):
         """
@@ -624,12 +746,10 @@ class Game:
         except KeyboardInterrupt:
             # ignoruj opakované Ctrl+C během dialogu
             try:
-                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                self.push_message(
+                    "[debug] escape dialog interrupted by Ctrl+C")
             except Exception:
                 pass
         finally:
             # vždy vyčistit flag, aby run() pokračovalo normálně
             self.awaiting_escape_confirm = False
-
-        
-
