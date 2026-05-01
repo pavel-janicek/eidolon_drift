@@ -64,6 +64,7 @@ except ImportError:
             curses = MockCurses()
 from pathlib import Path
 import random
+import logging
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world import sector
 from eidolon.world.player import Player
@@ -73,6 +74,7 @@ from eidolon.mechanics.movement import move_player
 from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
+from eidolon.config import LOG_LEVEL
 
 
 class Game:
@@ -85,6 +87,8 @@ class Game:
             - map_seed: optional seed passed to MapGenerator (None => config.SEED or system randomness)
             - base_density/min_distance: optional generator tuning
             """
+            self.logger = logging.getLogger(__name__)
+            logging.basicConfig(filename='eidolon.log', encoding='utf-8', level=LOG_LEVEL)
             self.stdscr = stdscr
 
             # --- create generator and map (keep generator reference) ---
@@ -259,8 +263,10 @@ class Game:
 
                     # input
                     if self.input_handler:
-                        token = self.input_handler.process_once()
+                        token = self.input_handler.process_once(0.2)
+                        self.logger.debug("process once finished")
                     else:
+                        self.push_message("No input handler")
                         token = None
 
                     if token == "QUIT_REQUEST":
@@ -269,7 +275,12 @@ class Game:
                         continue
 
                     if token is not None:
+                        self.push_message(f"token: {token}")
                         self.handle_token(token)
+                    else:
+                        self.logger.error("Token set to none")    
+                        self.push_message("Token set to none") 
+
 
                     # tick
                     self.tick()
@@ -310,6 +321,7 @@ class Game:
                             self.push_message(str(result))
                     # tick after command
                     self.tick(action_type="command")
+                    return
 
 
                 # --- ACTIONS (face buttons, help, ...) --------------------------
@@ -358,6 +370,7 @@ class Game:
                         # další akce
                         logger.debug("Unhandled action token: %s", token)
                     self.tick(action_type="action")
+                    return
 
 
                 # --- MOVEMENT (analog vector) ------------------------------------
@@ -383,6 +396,7 @@ class Game:
                         # self.push_message("Cannot move there.")
                         pass
                     self.tick(action_type="move")
+                    return
 
 
                 # --- MOVEMENT (discrete dpad) -------------------------------------
@@ -393,6 +407,7 @@ class Game:
                         if not moved:
                             self.push_message("Cannot move there.")
                         self.tick(action_type="move")
+                        return
 
 
                 # --- CONTROL (e.g. Ctrl+C) ---------------------------------------
@@ -402,6 +417,7 @@ class Game:
                         # zachovej původní chování pro Ctrl+C
                         self.awaiting_quit_confirm = True
                         self._handle_quit_confirm()
+                        return
 
 
                 # --- fallback -----------------------------------------------------

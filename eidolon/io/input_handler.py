@@ -17,6 +17,7 @@ import threading
 import time
 import queue
 from typing import Callable, Dict, List, Optional, Tuple
+from eidolon.config import LOG_LEVEL
 
 logger = logging.getLogger("eidolon.input")
 logger.addHandler(logging.NullHandler())
@@ -120,6 +121,8 @@ class InputHandler:
     def __init__(
         self, on_action_or_game=None, stdscr=None, deadzone: float = DEFAULT_DEADZONE
     ):
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(filename='eidolon.log', encoding='utf-8', level=LOG_LEVEL)
         """
         Backward-compatible constructor:
         - legacy call: InputHandler(stdscr)  -> on_action_or_game is curses window
@@ -191,6 +194,7 @@ class InputHandler:
         - or other legacy strings expected by Game._curses_main
         """
         if not getattr(self, "stdscr", None):
+            self.logger.debug("stdscr not found")
             return None
 
         # ensure non-blocking read
@@ -483,7 +487,11 @@ class InputHandler:
         Tokeny: {'type':'action','name':...} nebo {'type':'move','x':..., 'y':...}
         """
         try:
-            if timeout is None:
+            self.poll()
+        except Exception as e:
+             logger.exception(f"poll inside process_once failed {e}")
+        try:
+            if timeout is None:    
                 token = self._event_queue.get(block=True)
                 return token
             elif timeout == 0:

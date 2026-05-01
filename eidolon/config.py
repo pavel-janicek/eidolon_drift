@@ -1,4 +1,5 @@
 # eidolon/config.py
+import logging
 
 SEED = None  # set to int for reproducible runs
 MIN_MAP_WIDTH = 10
@@ -21,3 +22,5 @@ SECTOR_TYPE_WEIGHTS = {
     "AIRLOCK": 0.004,
     "EMPTY": 0.948,
 }
+
+LOG_LEVEL = logging.DEBUG
