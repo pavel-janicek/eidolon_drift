@@ -277,7 +277,6 @@ class Game:
                 # input
                 if self.input_handler:
                     token = self.input_handler.process_once(0.2)
-                    self.logger.debug("process once finished")
                 else:
                     self.push_message("No input handler")
                     token = None
@@ -289,8 +288,7 @@ class Game:
 
                 if token is not None:
                     self.handle_token(token)
-                else:
-                    self.logger.debug("Token set to none")
+                
 
                 # tick
                 self.tick()

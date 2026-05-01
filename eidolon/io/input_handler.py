@@ -17,7 +17,7 @@ import threading
 import time
 import queue
 from typing import Callable, Dict, List, Optional, Tuple
-from eidolon.config import LOG_LEVEL
+
 
 logger = logging.getLogger("eidolon.input")
 logger.addHandler(logging.NullHandler())
@@ -113,6 +113,7 @@ def _clamp(v: float, lo: float = -1.0, hi: float = 1.0) -> float:
 
 # --- InputHandler ---------------------------------------------------------
 class InputHandler:
+    from eidolon.config import LOG_LEVEL
     """
     InputHandler unifikuje klávesnici a gamepad for the game.
     Provide an on_action callback: on_action(action_name: str, payload: Optional[dict])
@@ -323,8 +324,10 @@ class InputHandler:
         """
         Call this each frame from the main loop.
         - If pygame joystick present, pump events and handle them.
-        - Else if evdev backend, poll device list (detection only).
+        - Else if evdev backend, poll device list (detection only)
         """
+        self.logger.debug("InputHandler.poll backend=%r pygame_joystick=%r", self.backend, bool(self._pygame_joystick))
+
           # poll curses keyboard first (priority)
         if getattr(self, "stdscr", None):
             try:
@@ -344,6 +347,8 @@ class InputHandler:
 
     # --- pygame event handling -------------------------------------------
     def _handle_pygame_event(self, ev):
+        self.logger.debug("pygame event: %r", ev)
+
         if ev.type == _PYGAME.JOYAXISMOTION:
             # read left stick axes by configured indices
             lx = (
@@ -603,9 +608,10 @@ class InputHandler:
         """
         try:
             # neblokující put (fronta je neomezená, ale pro jistotu)
+            self.logger.debug(f"Enqueueing event: {token}")
             self._event_queue.put_nowait(token)
         except Exception:
-            logger.exception("InputHandler: failed to enqueue event")
+            self.logger.exception("InputHandler: failed to enqueue event")
         # zachovej callback pro kompatibilitu
         try:
             if self.on_action:
@@ -616,11 +622,11 @@ class InputHandler:
                 else:
                     self.on_action(token.get("type"), token)
         except Exception:
-            logger.exception("InputHandler: on_action raised in _enqueue_event")
+            self.logger.exception("InputHandler: on_action raised in _enqueue_event")
 
     def _dispatch_action(self, action_key: str):
         action_name = DEFAULT_ACTIONS.get(action_key, action_key)
-        logger.debug("InputHandler dispatch action %s", action_name)
+        self.logger.debug("InputHandler dispatch action %s", action_name)
         token = {"type": "action", "name": action_name}
         # vlož do fronty a zavolej callback
         self._enqueue_event(token)
@@ -644,7 +650,7 @@ class InputHandler:
         try:
             self.poll()
         except Exception as e:
-             logger.exception(f"poll inside process_once failed {e}")
+             self.logger.exception(f"poll inside process_once failed {e}")
         try:
             if timeout is None:    
                 token = self._event_queue.get(block=True)
@@ -660,7 +666,7 @@ class InputHandler:
                 except queue.Empty:
                     return None
         except Exception:
-            logger.exception("InputHandler: process_once failed")
+            self.logger.exception("InputHandler: process_once failed")
             return None
 
 
