@@ -504,25 +504,71 @@ class InputHandler:
             self._enqueue_event({"type": "control", "key": "QUIT"})
             return
 
-        # colon command entry: ':' then read line (blocking)
+       # colon command entry: ':' then read line (blocking)
         if ch == ord(':'):
             try:
-                # switch to blocking to read the rest of the line
+                # prepare terminal for line input
                 try:
+                    # switch to blocking read so getstr waits for Enter
                     self.stdscr.nodelay(False)
                 except Exception:
                     pass
-                curses.echo()
+
+                # show cursor and enable echo so user sees typed characters
+                try:
+                    curses.curs_set(1)
+                except Exception:
+                    pass
+                try:
+                    curses.echo()
+                except Exception:
+                    pass
+
+                # draw a simple prompt on the bottom line
+                try:
+                    h, w = self.stdscr.getmaxyx()
+                    prompt = ":"
+                    # clear the bottom line
+                    try:
+                        self.stdscr.move(h - 1, 0)
+                        self.stdscr.clrtoeol()
+                    except Exception:
+                        pass
+                    try:
+                        self.stdscr.addstr(h - 1, 0, prompt)
+                    except Exception:
+                        # fallback: try addstr without coords
+                        try:
+                            self.stdscr.addstr(prompt)
+                        except Exception:
+                            pass
+                    try:
+                        self.stdscr.refresh()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+                # blocking read of the rest of the line
                 s = self.stdscr.getstr().decode(errors="ignore").strip()
-                curses.noecho()
                 if s:
                     self._enqueue_event({"type": "command", "cmd": s})
             except Exception:
+                # swallow errors but ensure terminal state restored
                 try:
                     curses.noecho()
                 except Exception:
                     pass
             finally:
+                # restore non-blocking mode and hide cursor, disable echo
+                try:
+                    curses.noecho()
+                except Exception:
+                    pass
+                try:
+                    curses.curs_set(0)
+                except Exception:
+                    pass
                 try:
                     self.stdscr.nodelay(True)
                 except Exception:
