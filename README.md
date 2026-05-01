@@ -1,6 +1,6 @@
 # Eidolon Drift
 
-**Version 1.0.0** - A Terminal-Based Incident Response Game
+**Version 1.2.0** - A Terminal-Based Incident Response Game
 
 *This game was written by AI (GitHub Copilot) with human guidance and testing.*
 

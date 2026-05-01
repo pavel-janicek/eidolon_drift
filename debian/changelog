@@ -1,3 +1,13 @@
+eidolon-drift (1.2.0) unstable; urgency=medium
+
+eidolon-drift (1.1.0) unstable; urgency=medium
+  * fix a bug where player could go outside playable area
+  * fix game mechanics with sanity-based items
+  * improve where game based items are stored, into separate json files
+  * improve environment description notes
+
+-- Pavel Janíček <pavel.janicek@live.com>  Thu, 30 Apr 2026 15:43:00 +0200
+
 eidolon-drift (1.0.0-1) unstable; urgency=medium
 
   * Upstream release 1.0.0
