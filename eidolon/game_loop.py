@@ -1,65 +1,65 @@
-    # eidolon/game_loop.py
-    # Cross-platform curses import
+# eidolon/game_loop.py
+# Cross-platform curses import
+try:
+    import curses
+    import signal
+except ImportError:
     try:
-        import curses
-        import signal
+        # Try windows-curses for Windows
+        import windows_curses as curses
     except ImportError:
-        try:
-            # Try windows-curses for Windows
-            import windows_curses as curses
-        except ImportError:
-            # Fallback: create a mock curses module for basic functionality
-            import sys
+        # Fallback: create a mock curses module for basic functionality
+        import sys
 
-            class MockCurses:
-                COLOR_CYAN = 1
-                COLOR_YELLOW = 2
-                COLOR_GREEN = 3
-                COLOR_RED = 4
-                COLOR_MAGENTA = 5
-                COLOR_WHITE = 7
-                COLOR_BLACK = 0
-                A_BOLD = 1
-                A_NORMAL = 0
-                A_REVERSE = 2
-                KEY_UP = 259
-                KEY_DOWN = 258
-                KEY_LEFT = 260
-                KEY_RIGHT = 261
-                KEY_BACKSPACE = 263
-                KEY_ENTER = 10
-                KEY_NPAGE = 338
-                KEY_PPAGE = 339
-                KEY_HOME = 262
-                KEY_END = 360
+        class MockCurses:
+            COLOR_CYAN = 1
+            COLOR_YELLOW = 2
+            COLOR_GREEN = 3
+            COLOR_RED = 4
+            COLOR_MAGENTA = 5
+            COLOR_WHITE = 7
+            COLOR_BLACK = 0
+            A_BOLD = 1
+            A_NORMAL = 0
+            A_REVERSE = 2
+            KEY_UP = 259
+            KEY_DOWN = 258
+            KEY_LEFT = 260
+            KEY_RIGHT = 261
+            KEY_BACKSPACE = 263
+            KEY_ENTER = 10
+            KEY_NPAGE = 338
+            KEY_PPAGE = 339
+            KEY_HOME = 262
+            KEY_END = 360
 
-                @staticmethod
-                def has_colors():
-                    return False
+            @staticmethod
+            def has_colors():
+                return False
 
-                @staticmethod
-                def start_color():
-                    pass
+            @staticmethod
+            def start_color():
+                pass
 
-                @staticmethod
-                def use_default_colors():
-                    pass
+            @staticmethod
+            def use_default_colors():
+                pass
 
-                @staticmethod
-                def init_pair(*args):
-                    pass
+            @staticmethod
+            def init_pair(*args):
+                pass
 
-                @staticmethod
-                def color_pair(n):
-                    return 0
+            @staticmethod
+            def color_pair(n):
+                return 0
 
-                @staticmethod
-                def curs_set(n):
-                    pass
+            @staticmethod
+            def curs_set(n):
+                pass
 
-                @staticmethod
-                def wrapper(func, *args):
-                    return func(*args)
+            @staticmethod
+            def wrapper(func, *args):
+                return func(*args)
 
             curses = MockCurses()
 from pathlib import Path
@@ -310,7 +310,7 @@ class Game:
                             self.push_message(str(result))
                     # tick after command
                     self.tick(action_type="command")
-                    
+
 
                 # --- ACTIONS (face buttons, help, ...) --------------------------
                 if ttype == "action":
@@ -358,7 +358,7 @@ class Game:
                         # další akce
                         logger.debug("Unhandled action token: %s", token)
                     self.tick(action_type="action")
-                    
+
 
                 # --- MOVEMENT (analog vector) ------------------------------------
                 if ttype == "move":
@@ -383,7 +383,7 @@ class Game:
                         # self.push_message("Cannot move there.")
                         pass
                     self.tick(action_type="move")
-            
+
 
                 # --- MOVEMENT (discrete dpad) -------------------------------------
                 if ttype == "move_dir":
@@ -393,7 +393,7 @@ class Game:
                         if not moved:
                             self.push_message("Cannot move there.")
                         self.tick(action_type="move")
-                
+
 
                 # --- CONTROL (e.g. Ctrl+C) ---------------------------------------
                 if ttype == "control":
@@ -402,7 +402,7 @@ class Game:
                         # zachovej původní chování pro Ctrl+C
                         self.awaiting_quit_confirm = True
                         self._handle_quit_confirm()
-                
+
 
                 # --- fallback -----------------------------------------------------
                 logger.debug("Unknown token received: %r", token)
