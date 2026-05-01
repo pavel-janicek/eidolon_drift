@@ -4,6 +4,10 @@ Priority: optional
 Maintainer: Vítězslav Dvořák <info@vitexsoftware.cz>
 Build-Depends:
  debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-setuptools,
+ python3-dev
 Standards-Version: 4.7.0
 Homepage: https://github.com/CyberVitexus/eidolon-drift
 Rules-Requires-Root: no
@@ -12,9 +16,7 @@ Vcs-Browser: https://github.com/CyberVitexus/eidolon-drift
 
 Package: eidolon-drift
 Architecture: all
-Depends:
- ${misc:Depends},
- python3 (>= 3.6),
+Depends: ${python3:Depends}, ${misc:Depends}, python3-pygame, python3-evdev, python3-hid
 Description: terminal-based incident response space horror game
  Eidolon Drift is a curses-based adventure game in which the player takes
  the role of an incident responder aboard a distressed spaceship. Navigate
