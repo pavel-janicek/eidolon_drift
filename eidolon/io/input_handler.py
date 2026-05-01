@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import queue
 from typing import Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("eidolon.input")
@@ -94,8 +95,8 @@ class InputHandler:
     Provide an on_action callback: on_action(action_name: str, payload: Optional[dict])
     """
 
-    def __init__(self, on_action: Callable[[str, Optional[dict]], None], deadzone: float = DEFAULT_DEADZONE):
-        self.on_action = on_action
+    def __init__(self, on_action_or_game, stdscr=None, deadzone: float = DEFAULT_DEADZONE):
+        self.on_action = on_action_or_game
         self.deadzone = float(deadzone)
         self.backend = backend_name()
         self._using_controller = False
@@ -103,6 +104,7 @@ class InputHandler:
         self._monitoring = False
         self._last_move = (0.0, 0.0)
         self._hotplug_thread = None
+        self._event_queue: "queue.Queue[dict]" = queue.Queue()
 
         # mapping: action -> ("button", index) or ("axis_pos", axis_index, threshold)
         self.button_map = {
@@ -296,6 +298,69 @@ class InputHandler:
                 pass
         self._pygame_joystick = None
         self._using_controller = False
+
+    def _enqueue_event(self, token: dict) -> None:
+        """
+        Interně vloží token do fronty a zároveň zavolá on_action (pokud je nastaveno).
+        Token má strukturu např. {'type':'action','name':'use'} nebo {'type':'move','x':0.5,'y':-0.2}.
+        """
+        try:
+            # neblokující put (fronta je neomezená, ale pro jistotu)
+            self._event_queue.put_nowait(token)
+        except Exception:
+            logger.exception("InputHandler: failed to enqueue event")
+        # zachovej callback pro kompatibilitu
+        try:
+            if self.on_action:
+                # callback dostane stejný token (nebo jen název akce podle potřeby)
+                # zde voláme callback asynchronně (synchronně v rámci vlákna main loopy)
+                if token.get("type") == "action":
+                    self.on_action(token.get("name"), None)
+                else:
+                    self.on_action(token.get("type"), token)
+        except Exception:
+            logger.exception("InputHandler: on_action raised in _enqueue_event")
+
+    def _dispatch_action(self, action_key: str):
+        action_name = DEFAULT_ACTIONS.get(action_key, action_key)
+        logger.debug("InputHandler dispatch action %s", action_name)
+        token = {"type": "action", "name": action_name}
+        # vlož do fronty a zavolej callback
+        self._enqueue_event(token)
+
+    def _emit_move(self, mx: float, my: float):
+        if mx == 0 and my == 0:
+            token = {"type": "move", "x": 0.0, "y": 0.0}
+        else:
+            token = {"type": "move", "x": mx, "y": my}
+        # vlož do fronty a zavolej callback
+        self._enqueue_event(token)
+
+    def process_once(self, timeout: Optional[float] = None) -> Optional[dict]:
+        """
+        Vrátí jeden token z fronty událostí nebo None pokud nic nepřišlo do timeoutu.
+        - timeout = None -> blokuje dokud nepřijde událost
+        - timeout = 0 -> neblokující (okamžitý návrat)
+        - timeout > 0 -> blokuje maximálně timeout sekund
+        Tokeny: {'type':'action','name':...} nebo {'type':'move','x':..., 'y':...}
+        """
+        try:
+            if timeout is None:
+                token = self._event_queue.get(block=True)
+                return token
+            elif timeout == 0:
+                try:
+                    return self._event_queue.get_nowait()
+                except queue.Empty:
+                    return None
+            else:
+                try:
+                    return self._event_queue.get(block=True, timeout=float(timeout))
+                except queue.Empty:
+                    return None
+        except Exception:
+            logger.exception("InputHandler: process_once failed")
+            return None    
 
 # --- CLI helpers for mapping and monitoring -------------------------------
 def _map_test_loop(poll_interval: float = 0.01):
