@@ -62,6 +62,8 @@ except ImportError:
                 return func(*args)
 
             curses = MockCurses()
+
+
 from pathlib import Path
 import random
 import logging
@@ -78,694 +80,713 @@ from eidolon.config import LOG_LEVEL
 
 
 class Game:
-        def __init__(self, stdscr=None, map_width=None, map_height=None, map_seed=None, base_density=None, min_distance=None):
-            """
-            Initialize game state.
-            Optional args:
-            - stdscr: curses screen (or None)
-            - map_width/map_height: override generator size
-            - map_seed: optional seed passed to MapGenerator (None => config.SEED or system randomness)
-            - base_density/min_distance: optional generator tuning
-            """
-            self.logger = logging.getLogger(__name__)
-            logging.basicConfig(filename='eidolon.log', encoding='utf-8', level=LOG_LEVEL)
-            self.stdscr = stdscr
+    def __init__(
+        self,
+        stdscr=None,
+        map_width=None,
+        map_height=None,
+        map_seed=None,
+        base_density=None,
+        min_distance=None,
+    ):
+        """
+        Initialize game state.
+        Optional args:
+        - stdscr: curses screen (or None)
+        - map_width/map_height: override generator size
+        - map_seed: optional seed passed to MapGenerator (None => config.SEED or system randomness)
+        - base_density/min_distance: optional generator tuning
+        """
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(filename="eidolon.log", encoding="utf-8", level=LOG_LEVEL)
+        self.stdscr = stdscr
 
-            # --- create generator and map (keep generator reference) ---
-            # create MapGenerator with optional tuning; MapGenerator handles seed fallback
-            gen = MapGenerator(width=map_width, height=map_height, seed=map_seed,
-                            base_density=base_density, min_distance=min_distance)
-            game_map = gen.generate(width=map_width, height=map_height)
-            # keep generator reference on the map for later use (spawning, instantiation)
-            setattr(game_map, "generator", gen)
-            self.map = game_map
+        # --- create generator and map (keep generator reference) ---
+        # create MapGenerator with optional tuning; MapGenerator handles seed fallback
+        gen = MapGenerator(
+            width=map_width,
+            height=map_height,
+            seed=map_seed,
+            base_density=base_density,
+            min_distance=min_distance,
+        )
+        game_map = gen.generate(width=map_width, height=map_height)
+        # keep generator reference on the map for later use (spawning, instantiation)
+        setattr(game_map, "generator", gen)
+        self.map = game_map
 
-            # reuse generator RNG for game-level randomness (consistent seeding)
-            self.rng = getattr(gen, "rng", random.Random())
+        # reuse generator RNG for game-level randomness (consistent seeding)
+        self.rng = getattr(gen, "rng", random.Random())
 
-            # --- find player start (prefer AIRLOCK) ---
+        # --- find player start (prefer AIRLOCK) ---
+        start = None
+        try:
+            for (x, y), s in self.map.grid.items():
+                if getattr(s, "type", "").upper() == "AIRLOCK":
+                    start = (x, y)
+                    break
+        except Exception:
             start = None
+        if start is None:
+            # fallback: try map.get_sector if available, else (0,0)
             try:
-                for (x, y), s in self.map.grid.items():
-                    if getattr(s, "type", "").upper() == "AIRLOCK":
-                        start = (x, y)
-                        break
-            except Exception:
-                start = None
-            if start is None:
-                # fallback: try map.get_sector if available, else (0,0)
-                try:
-                    sec = self.map.get_sector(0, 0)
-                    if sec:
-                        start = (sec.x, sec.y)
-                    else:
-                        start = (0, 0)
-                except Exception:
-                    start = (0, 0)
-
-            # --- player and core systems ---
-            self.player = Player(x=start[0], y=start[1])
-            self.input_handler = None
-            self.renderer = None
-            self.running = True
-
-            # messages buffer and debug push helper
-            self.messages = []
-            # event system
-            self.event_defs = load_event_defs()
-            self.event_engine = EventEngine(self, event_defs=self.event_defs)
-
-            # last position for linger logic
-            self._last_pos = (self.player.x, self.player.y)
-
-            # tick and ambient systems
-            self.tick_counter = 0
-            # ambient tuning (can be overridden later)
-            self.ambient_spawn_interval = getattr(
-                self, "ambient_spawn_interval", 3000)
-            self.ambient_message_interval = getattr(
-                self, "ambient_message_interval", 200)
-            self.current_ambient_message = None
-
-            # load ambient messages (non-fatal)
-            try:
-                # expects Game._load_ambient_messages(path) to exist; if not, this is a no-op
-                if hasattr(self, "_load_ambient_messages"):
-                    self._load_ambient_messages("data/ambient_messages.json")
+                sec = self.map.get_sector(0, 0)
+                if sec:
+                    start = (sec.x, sec.y)
                 else:
-                    # minimal fallback: empty list
-                    self.ambient_messages = []
+                    start = (0, 0)
             except Exception:
+                start = (0, 0)
+
+        # --- player and core systems ---
+        self.player = Player(x=start[0], y=start[1])
+        self.input_handler = None
+        self.renderer = None
+        self.running = True
+
+        # messages buffer and debug push helper
+        self.messages = []
+        # event system
+        self.event_defs = load_event_defs()
+        self.event_engine = EventEngine(self, event_defs=self.event_defs)
+
+        # last position for linger logic
+        self._last_pos = (self.player.x, self.player.y)
+
+        # tick and ambient systems
+        self.tick_counter = 0
+        # ambient tuning (can be overridden later)
+        self.ambient_spawn_interval = getattr(self, "ambient_spawn_interval", 3000)
+        self.ambient_message_interval = getattr(self, "ambient_message_interval", 200)
+        self.current_ambient_message = None
+
+        # load ambient messages (non-fatal)
+        try:
+            # expects Game._load_ambient_messages(path) to exist; if not, this is a no-op
+            if hasattr(self, "_load_ambient_messages"):
+                self._load_ambient_messages("data/ambient_messages.json")
+            else:
+                # minimal fallback: empty list
                 self.ambient_messages = []
+        except Exception:
+            self.ambient_messages = []
 
-            if getattr(self, "ambient_messages", None):
-                self.current_ambient_message = self.ambient_messages[0]
+        if getattr(self, "ambient_messages", None):
+            self.current_ambient_message = self.ambient_messages[0]
 
-            # expose map generator on game for convenience (some code expects game.map.generator)
-            self.map.generator = gen
+        # expose map generator on game for convenience (some code expects game.map.generator)
+        self.map.generator = gen
 
-            # startup flavor messages
-            self.push_message(
-                "Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod."
-            )
-            self.push_message("Type 'help' for commands. Use WASD to move.")
-            self.awaiting_quit_confirm = False
-            # stav pro escape dialog
-            self.awaiting_escape_confirm = False
+        # startup flavor messages
+        self.push_message(
+            "Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod."
+        )
+        self.push_message("Type 'help' for commands. Use WASD to move.")
+        self.awaiting_quit_confirm = False
+        # stav pro escape dialog
+        self.awaiting_escape_confirm = False
 
-        def push_message(self, text):
-            if not hasattr(self, "messages"):
-                self.messages = []
+    def push_message(self, text):
+        if not hasattr(self, "messages"):
+            self.messages = []
 
-            self.messages.append(str(text))
-            if len(self.messages) > 200:
-                self.messages = self.messages[-200:]
+        self.messages.append(str(text))
+        if len(self.messages) > 200:
+            self.messages = self.messages[-200:]
 
-            try:
-                with open("eidolon_messages.log", "a", encoding="utf-8") as f:
-                    f.write(str(text).replace("\n", " ") + "\n")
-            except Exception:
-                pass
+        try:
+            with open("eidolon_messages.log", "a", encoding="utf-8") as f:
+                f.write(str(text).replace("\n", " ") + "\n")
+        except Exception:
+            pass
 
-        def _curses_main(self, stdscr):
-            curses.curs_set(0)
-            stdscr.nodelay(False)
-            stdscr.keypad(True)
-            self.stdscr = stdscr
-            self.input_handler = InputHandler(stdscr)
-            self.renderer = OutputRenderer(stdscr, self.map, self.player, self)
+    def _curses_main(self, stdscr):
+        curses.curs_set(0)
+        stdscr.nodelay(False)
+        stdscr.keypad(True)
+        self.stdscr = stdscr
+        self.input_handler = InputHandler(stdscr)
+        self.renderer = OutputRenderer(stdscr, self.map, self.player, self)
+        self.renderer.render()
+
+        while self.running:
+            key = self.input_handler.get_key()
+            if key is None:
+                continue
+
+            if key == "QUIT_REQUEST":
+                self.awaiting_quit_confirm = True
+                self.push_message("Quit game? (y/n)")
+                continue
+
+            if key.startswith("CMD:"):
+                cmd = key[4:]
+                result = cmdmod.handle_command(self, cmd)
+                if result:
+                    self.push_message(result)
+                self.tick(action_type="command")
+            else:
+                moved = move_player(self.map, self.player, key)
+                if moved:
+                    sector = self.map.get_sector(self.player.x, self.player.y)
+                    name = (
+                        sector.name if sector else f"({self.player.x},{self.player.y})"
+                    )
+                    self.push_message(f"Moved to {name}.")
+                else:
+                    self.push_message("Cannot move there.")
+                self.tick(action_type="move")
+
             self.renderer.render()
 
+    def run(self, stdscr=None):
+        import time
+        import signal
+
+        def _sigint_handler(signum, frame):
+            raise KeyboardInterrupt
+
+        signal.signal(signal.SIGINT, _sigint_handler)
+
+        try:
+
+            if self.renderer:
+                try:
+                    self.renderer.render()
+                except Exception as e:
+                    self.push_message(f"[debug] initial renderer.render() failed: {e}")
+
             while self.running:
-                key = self.input_handler.get_key()
-                if key is None:
+
+                # quit confirm modal
+                if self.awaiting_quit_confirm:
+                    self._handle_quit_confirm()
                     continue
 
-                if key == "QUIT_REQUEST":
-                    self.awaiting_quit_confirm = True
-                    self.push_message("Quit game? (y/n)")
+                if self.awaiting_escape_confirm:
+                    self._handle_escape_confirm()
                     continue
 
-                if key.startswith("CMD:"):
-                    cmd = key[4:]
-                    result = cmdmod.handle_command(self, cmd)
-                    if result:
-                        self.push_message(result)
-                    self.tick(action_type="command")
-                else:
-                    moved = move_player(self.map, self.player, key)
-                    if moved:
-                        sector = self.map.get_sector(self.player.x, self.player.y)
-                        name = sector.name if sector else f"({self.player.x},{self.player.y})"
-                        self.push_message(f"Moved to {name}.")
-                    else:
-                        self.push_message("Cannot move there.")
-                    self.tick(action_type="move")
-
-                self.renderer.render()
-
-        def run(self, stdscr=None):
-            import time
-            import signal
-
-            def _sigint_handler(signum, frame):
-                raise KeyboardInterrupt
-
-            signal.signal(signal.SIGINT, _sigint_handler)
-
-            try:
-
+                # render
                 if self.renderer:
                     try:
                         self.renderer.render()
                     except Exception as e:
-                        self.push_message(
-                            f"[debug] initial renderer.render() failed: {e}")
+                        self.push_message(f"[debug] renderer.render error: {e}")
 
-                while self.running:
+                # input
+                if self.input_handler:
+                    token = self.input_handler.process_once(0.2)
+                    self.logger.debug("process once finished")
+                else:
+                    self.push_message("No input handler")
+                    token = None
 
-                    # quit confirm modal
-                    if self.awaiting_quit_confirm:
-                        self._handle_quit_confirm()
-                        continue
+                if token == "QUIT_REQUEST":
+                    self.awaiting_quit_confirm = True
+                    self.push_message("Quit game? (y/n)")
+                    continue
 
-                    if self.awaiting_escape_confirm:
-                        self._handle_escape_confirm()
-                        continue
+                if token is not None:
+                    self.handle_token(token)
+                else:
+                    self.logger.debug("Token set to none")
 
-                    # render
-                    if self.renderer:
-                        try:
-                            self.renderer.render()
-                        except Exception as e:
-                            self.push_message(
-                                f"[debug] renderer.render error: {e}")
+                # tick
+                self.tick()
 
-                    # input
-                    if self.input_handler:
-                        token = self.input_handler.process_once(0.2)
-                        self.logger.debug("process once finished")
+                time.sleep(0.02)
+
+        except KeyboardInterrupt:
+            self.awaiting_quit_confirm = True
+            self.run()
+        except Exception as e:
+            self.push_message(f"[debug] Game.run error: {e}")
+
+    def handle_token(self, token):
+        # token může být None nebo dict
+        if not token:
+            # nic k zpracování
+            pass
+        else:
+            ttype = token.get("type")
+
+            # --- COMMANDS ----------------------------------------------------
+            if ttype == "command":
+                cmd = token.get("cmd", "").strip()
+                if cmd:
+                    result = cmdmod.handle_command(self, cmd)
+                    # handle_command může vrátit:
+                    # - None (renderer/pager handled display)
+                    # - string (text to push)
+                    # - list of lines (push each)
+                    if result is None:
+                        # pager handled it or nothing to show
+                        pass
+                    elif isinstance(result, list):
+                        for line in result:
+                            self.push_message(line)
                     else:
-                        self.push_message("No input handler")
-                        token = None
+                        # string
+                        self.push_message(str(result))
+                # tick after command
+                self.tick(action_type="command")
+                return
 
-                    if token == "QUIT_REQUEST":
-                        self.awaiting_quit_confirm = True
-                        self.push_message("Quit game? (y/n)")
-                        continue
+            # --- ACTIONS (face buttons, help, ...) --------------------------
+            if ttype == "action":
+                name = token.get("name")
+                if name == "use":
+                    # call existing use logic (example)
+                    result = cmdmod.handle_command(self, "use")
 
-                    if token is not None:
-                        self.push_message(f"token: {token}")
-                        self.handle_token(token)
-                    else:
-                        self.logger.error("Token set to none")    
-                        self.push_message("Token set to none") 
-
-
-                    # tick
-                    self.tick()
-
-                    time.sleep(0.02)
-
-            except KeyboardInterrupt:
-                self.awaiting_quit_confirm = True
-                self.run()
-            except Exception as e:
-                self.push_message(f"[debug] Game.run error: {e}")
-
-        def handle_token(self, token):
-            # token může být None nebo dict
-            if not token:
-                # nic k zpracování
-                pass
-            else:
-                ttype = token.get("type")
-
-                # --- COMMANDS ----------------------------------------------------
-                if ttype == "command":
-                    cmd = token.get("cmd", "").strip()
-                    if cmd:
-                        result = cmdmod.handle_command(self, cmd)
-                        # handle_command může vrátit:
-                        # - None (renderer/pager handled display)
-                        # - string (text to push)
-                        # - list of lines (push each)
-                        if result is None:
-                            # pager handled it or nothing to show
-                            pass
-                        elif isinstance(result, list):
-                            for line in result:
-                                self.push_message(line)
-                        else:
-                            # string
-                            self.push_message(str(result))
-                    # tick after command
-                    self.tick(action_type="command")
-                    return
-
-
-                # --- ACTIONS (face buttons, help, ...) --------------------------
-                if ttype == "action":
-                    name = token.get("name")
-                    if name == "use":
-                        # call existing use logic (example)
-                        result = cmdmod.handle_command(self, "use")
-
-                    elif name == "scan":
-                        result = cmdmod.handle_command(self, "scan")
-                        if result:
-                            if isinstance(result, list):
-                                for l in result:
-                                    self.push_message(l)
-                            else:
-                                self.push_message(result)
-                    elif name == "logs":
-                        result = cmdmod.handle_command(self, "logs")
-                        if result:
-                            if isinstance(result, list):
-                                for l in result:
-                                    self.push_message(l)
-                            else:
-                                self.push_message(result)
-                    elif name == "inspect":
-                        # inspect bez argumentu -> může otevřít UI nebo pushnout hint
-                        # adaptuj podle toho, jak inspect má být voláno
-                        result = cmdmod.handle_command(self, "inspect")
-                        if result:
-                            if isinstance(result, list):
-                                for l in result:
-                                    self.push_message(l)
+                elif name == "scan":
+                    result = cmdmod.handle_command(self, "scan")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
                         else:
                             self.push_message(result)
-                    elif name == "help":
-                        # pomocná akce
-                        result = cmdmod.handle_command(self, "help")
-                        if result:
-                            if isinstance(result, list):
-                                for l in result:
-                                    self.push_message(l)
-                            else:
-                                self.push_message(result)
-                    else:
-                        # další akce
-                        logger.debug("Unhandled action token: %s", token)
-                    self.tick(action_type="action")
-                    return
-
-
-                # --- MOVEMENT (analog vector) ------------------------------------
-                if ttype == "move":
-                    x = float(token.get("x", 0.0))
-                    y = float(token.get("y", 0.0))
-                    # kvantizuj na čtyři směry nebo použij analogové pohyby
-                    # jednoduchý příklad: pokud absolutní hodnota > 0.5 považuj za směr
-                    if abs(x) < 0.2 and abs(y) < 0.2:
-                        # drobné posuny ignoruj
-                        moved = False
-                    else:
-                        # preferuj osu s větší absolutní hodnotou pro diskretní pohyb
-                        if abs(x) > abs(y):
-                            dir_token = "RIGHT" if x > 0 else "LEFT"
+                elif name == "logs":
+                    result = cmdmod.handle_command(self, "logs")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
                         else:
-                            dir_token = "DOWN" if y > 0 else "UP"
-                        moved = move_player(self.map, self.player, dir_token)
-                    if moved:
-                        sec = self.map.get_sector(self.player.x, self.player.y)
+                            self.push_message(result)
+                elif name == "inspect":
+                    # inspect bez argumentu -> může otevřít UI nebo pushnout hint
+                    # adaptuj podle toho, jak inspect má být voláno
+                    result = cmdmod.handle_command(self, "inspect")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
                     else:
-                        # pokud se nepohnul, můžeš ignorovat nebo pushnout zprávu
-                        # self.push_message("Cannot move there.")
-                        pass
+                        self.push_message(result)
+                elif name == "help":
+                    # pomocná akce
+                    result = cmdmod.handle_command(self, "help")
+                    if result:
+                        if isinstance(result, list):
+                            for l in result:
+                                self.push_message(l)
+                        else:
+                            self.push_message(result)
+                else:
+                    # další akce
+                    logger.debug("Unhandled action token: %s", token)
+                self.tick(action_type="action")
+                return
+
+            # --- MOVEMENT (analog vector) ------------------------------------
+            if ttype == "move":
+                x = float(token.get("x", 0.0))
+                y = float(token.get("y", 0.0))
+                # kvantizuj na čtyři směry nebo použij analogové pohyby
+                # jednoduchý příklad: pokud absolutní hodnota > 0.5 považuj za směr
+                if abs(x) < 0.2 and abs(y) < 0.2:
+                    # drobné posuny ignoruj
+                    moved = False
+                else:
+                    # preferuj osu s větší absolutní hodnotou pro diskretní pohyb
+                    if abs(x) > abs(y):
+                        dir_token = "RIGHT" if x > 0 else "LEFT"
+                    else:
+                        dir_token = "DOWN" if y > 0 else "UP"
+                    moved = move_player(self.map, self.player, dir_token)
+                if moved:
+                    sec = self.map.get_sector(self.player.x, self.player.y)
+                else:
+                    # pokud se nepohnul, můžeš ignorovat nebo pushnout zprávu
+                    # self.push_message("Cannot move there.")
+                    pass
+                self.tick(action_type="move")
+                return
+
+            # --- MOVEMENT (discrete dpad) -------------------------------------
+            if ttype == "move_dir":
+                dir_token = token.get("dir")
+                if dir_token in ("UP", "DOWN", "LEFT", "RIGHT"):
+                    moved = move_player(self.map, self.player, dir_token)
+                    if not moved:
+                        self.push_message("Cannot move there.")
                     self.tick(action_type="move")
                     return
 
+            # --- CONTROL (e.g. Ctrl+C) ---------------------------------------
+            if ttype == "control":
+                key = token.get("key")
+                if key == "SIGINT" or key == "QUIT":
+                    # zachovej původní chování pro Ctrl+C
+                    self.awaiting_quit_confirm = True
+                    self._handle_quit_confirm()
+                    return
 
-                # --- MOVEMENT (discrete dpad) -------------------------------------
-                if ttype == "move_dir":
-                    dir_token = token.get("dir")
-                    if dir_token in ("UP", "DOWN", "LEFT", "RIGHT"):
-                        moved = move_player(self.map, self.player, dir_token)
-                        if not moved:
-                            self.push_message("Cannot move there.")
-                        self.tick(action_type="move")
-                        return
+            # --- fallback -----------------------------------------------------
+            logger.debug("Unknown token received: %r", token)
 
+    def tick(self, action_type="move"):
+        sector = self.map.get_sector(self.player.x, self.player.y)
+        if sector is None:
+            return
 
-                # --- CONTROL (e.g. Ctrl+C) ---------------------------------------
-                if ttype == "control":
-                    key = token.get("key")
-                    if key == "SIGINT" or key == "QUIT":
-                        # zachovej původní chování pro Ctrl+C
-                        self.awaiting_quit_confirm = True
-                        self._handle_quit_confirm()
-                        return
+        if getattr(self, "_last_pos", None) == (self.player.x, self.player.y):
+            sector.linger_counter = getattr(sector, "linger_counter", 0) + 1
+        else:
+            sector.linger_counter = 0
 
+        self._last_pos = (self.player.x, self.player.y)
 
-                # --- fallback -----------------------------------------------------
-                logger.debug("Unknown token received: %r", token)
-
-        def tick(self, action_type="move"):
-            sector = self.map.get_sector(self.player.x, self.player.y)
-            if sector is None:
-                return
-
-            if getattr(self, "_last_pos", None) == (self.player.x, self.player.y):
-                sector.linger_counter = getattr(sector, "linger_counter", 0) + 1
-            else:
+        thresholds = getattr(sector, "linger_thresholds", {}) or {}
+        for th, event_list in list(thresholds.items()):
+            if sector.linger_counter >= int(th):
+                for event_id in (
+                    event_list if isinstance(event_list, list) else [event_list]
+                ):
+                    event_def = self.event_defs.get(event_id)
+                    if event_def:
+                        self.event_engine.trigger(event_def, sector)
                 sector.linger_counter = 0
+        # --- SANITY HANDLING ---
 
-            self._last_pos = (self.player.x, self.player.y)
+        # 1) sanity decay over time (slow, atmospheric)
+        if not hasattr(self, "_sanity_tick_counter"):
+            self._sanity_tick_counter = 0
 
-            thresholds = getattr(sector, "linger_thresholds", {}) or {}
-            for th, event_list in list(thresholds.items()):
-                if sector.linger_counter >= int(th):
-                    for event_id in (event_list if isinstance(event_list, list) else [event_list]):
-                        event_def = self.event_defs.get(event_id)
-                        if event_def:
-                            self.event_engine.trigger(event_def, sector)
-                    sector.linger_counter = 0
-            # --- SANITY HANDLING ---
+        self._sanity_tick_counter += 1
 
-            # 1) sanity decay over time (slow, atmospheric)
-            if not hasattr(self, "_sanity_tick_counter"):
-                self._sanity_tick_counter = 0
+        # lose 1 sanity every 70 ticks
+        if self._sanity_tick_counter >= 70:
+            self.player.lose_sanity(1)
+            self._sanity_tick_counter = 0
 
-            self._sanity_tick_counter += 1
+        # 2) anomaly proximity
+        sector = self.map.get_sector(self.player.x, self.player.y)
+        if sector and any(o.get("type") == "anomaly" for o in sector.objects):
+            self.player.lose_sanity(1)
+            self.push_message("You feel a pressure in your skull...")
 
-            # lose 1 sanity every 70 ticks
-            if self._sanity_tick_counter >= 70:
+        # 3) optional: dark sectors
+        if sector and getattr(sector, "dark", False):
+            if random.random() < 0.05:  # 5% chance per tick
                 self.player.lose_sanity(1)
-                self._sanity_tick_counter = 0
 
-            # 2) anomaly proximity
-            sector = self.map.get_sector(self.player.x, self.player.y)
-            if sector and any(o.get("type") == "anomaly" for o in sector.objects):
-                self.player.lose_sanity(1)
-                self.push_message("You feel a pressure in your skull...")
+        # --- SANITY RECOVERY: MEDBAY ---
+        if not hasattr(self, "_sanity_medbay_counter"):
+            self._sanity_medbay_counter = 0
 
-            # 3) optional: dark sectors
-            if sector and getattr(sector, "dark", False):
-                if random.random() < 0.05:  # 5% chance per tick
-                    self.player.lose_sanity(1)
+        sector = self.map.get_sector(self.player.x, self.player.y)
 
-            # --- SANITY RECOVERY: MEDBAY ---
-            if not hasattr(self, "_sanity_medbay_counter"):
-                self._sanity_medbay_counter = 0
+        if sector and sector.type == "MEDBAY":
+            # medbay slowly restores sanity
 
-            sector = self.map.get_sector(self.player.x, self.player.y)
+            self._sanity_medbay_counter += 1
 
-            if sector and sector.type == "MEDBAY":
-                # medbay slowly restores sanity
+        # restore 1 sanity every 5 ticks
+        if self._sanity_medbay_counter >= 5:
+            self.player.gain_sanity(1)
+            self._sanity_medbay_counter = 0
+            self.push_message("You feel calmer here.")
 
-                self._sanity_medbay_counter += 1
+        # --- AMBIENT MESSAGE UPDATE ---
+        if not hasattr(self, "_ambient_message_tick_counter"):
+            self._ambient_message_tick_counter = 0
 
-            # restore 1 sanity every 5 ticks
-            if self._sanity_medbay_counter >= 5:
-                self.player.gain_sanity(1)
-                self._sanity_medbay_counter = 0
-                self.push_message("You feel calmer here.")
+        self._ambient_message_tick_counter += 1
+        if self._ambient_message_tick_counter >= self.ambient_message_interval:
+            if getattr(self, "ambient_messages", None):
+                self.current_ambient_message = (
+                    self.rng.choice(self.ambient_messages)
+                    if getattr(self, "rng", None)
+                    else self.ambient_messages[0]
+                )
+            self._ambient_message_tick_counter = 0
 
-            # --- AMBIENT MESSAGE UPDATE ---
-            if not hasattr(self, "_ambient_message_tick_counter"):
-                self._ambient_message_tick_counter = 0
+        # --- AMBIENT SPAWNING ---
+        # Call ambient spawning on a configurable interval
+        if not hasattr(self, "_ambient_tick_counter"):
+            self._ambient_tick_counter = 0
 
-            self._ambient_message_tick_counter += 1
-            if self._ambient_message_tick_counter >= self.ambient_message_interval:
-                if getattr(self, "ambient_messages", None):
-                    self.current_ambient_message = (
-                        self.rng.choice(self.ambient_messages)
-                        if getattr(self, "rng", None)
-                        else self.ambient_messages[0]
-                    )
-                self._ambient_message_tick_counter = 0
+        self._ambient_tick_counter += 1
+        if self._ambient_tick_counter >= self.ambient_spawn_interval:
+            self.tick_spawn_ambient()
+            self._ambient_tick_counter = 0
 
-            # --- AMBIENT SPAWNING ---
-            # Call ambient spawning on a configurable interval
-            if not hasattr(self, "_ambient_tick_counter"):
-                self._ambient_tick_counter = 0
+    def handle_command(self, cmd):
+        try:
+            return cmdmod.handle_command(self, cmd)
+        except Exception as e:
+            self.push_message(f"[debug] game.handle_command error: {e}")
+            return f"Command error: {e}"
 
-            self._ambient_tick_counter += 1
-            if self._ambient_tick_counter >= self.ambient_spawn_interval:
-                self.tick_spawn_ambient()
-                self._ambient_tick_counter = 0
+    def handle_death(self, reason="You died."):
+        self.push_message(reason)
+        self.push_message("You have died. Game over.")
+        if self.renderer:
+            self.renderer.render()
+        self.running = False
 
-        def handle_command(self, cmd):
+    # in Game class
+    def tick_spawn_ambient(self):
+        # called on the ambient spawn interval
+        if not getattr(self, "map", None):
+            return
+        attempts = 8
+        for _ in range(self.rng.randint(1, 2)):
+            rx = self.rng.randrange(0, self.map.width)
+            ry = self.rng.randrange(0, self.map.height)
+            sec = self.map.grid.get((rx, ry))
+            if not sec:
+                continue
+            # prefer empty or low-object sectors
+            if getattr(sec, "objects", None) and len(sec.objects) >= 2:
+                continue
+            # choose a filler template id list (match ids you added)
+            filler_ids = ["debris_small", "battery_pack", "note_scrap"]
+            tpl = self.map.generator.template_index.get(self.rng.choice(filler_ids))
+            if not tpl:
+                # fallback: pick any template with small weight
+                candidates = [
+                    t
+                    for t in self.map.generator.templates
+                    if t.get("kind") == "template"
+                    and t.get("type") in ("debris", "item", "log")
+                ]
+                if not candidates:
+                    continue
+                tpl = self.rng.choice(candidates)
+            obj = self.map.generator._instantiate_from_template(tpl, sec)
+            sec.objects.append(obj)
+
+    def _load_ambient_messages(self, path: str = None):
+        """
+        Robustní loader ambientních zpráv.
+        - path: může být absolutní nebo relativní; pokud None, zkusíme několik standardních míst.
+        - výstup: self.ambient_messages = list[str]
+        - debug: vypisuje do stderr, co našel / proč selhal.
+        """
+        from pathlib import Path
+        import json
+        import sys
+
+        self.ambient_messages = []
+
+        # candidate paths (in order)
+        candidates = []
+        if path:
+            candidates.append(Path(path))
+        # data/ sibling of the eidolon package directory (installed layout)
+        candidates.append(
+            Path(__file__).resolve().parent / "data" / "ambient_messages.json"
+        )
+        # one level above the package (source tree / legacy installed layout)
+        candidates.append(
+            Path(__file__).resolve().parent.parent / "data" / "ambient_messages.json"
+        )
+        # cwd/data (fallback for running from project root)
+        candidates.append(Path.cwd() / "data" / "ambient_messages.json")
+
+        tried = []
+        for p in candidates:
             try:
-                return cmdmod.handle_command(self, cmd)
-            except Exception as e:
-                self.push_message(f"[debug] game.handle_command error: {e}")
-                return f"Command error: {e}"
-
-        def handle_death(self, reason="You died."):
-            self.push_message(reason)
-            self.push_message("You have died. Game over.")
-            if self.renderer:
-                self.renderer.render()
-            self.running = False
-
-        # in Game class
-        def tick_spawn_ambient(self):
-            # called on the ambient spawn interval
-            if not getattr(self, "map", None):
-                return
-            attempts = 8
-            for _ in range(self.rng.randint(1, 2)):
-                rx = self.rng.randrange(0, self.map.width)
-                ry = self.rng.randrange(0, self.map.height)
-                sec = self.map.grid.get((rx, ry))
-                if not sec:
-                    continue
-                # prefer empty or low-object sectors
-                if getattr(sec, "objects", None) and len(sec.objects) >= 2:
-                    continue
-                # choose a filler template id list (match ids you added)
-                filler_ids = ["debris_small", "battery_pack", "note_scrap"]
-                tpl = self.map.generator.template_index.get(
-                    self.rng.choice(filler_ids))
-                if not tpl:
-                    # fallback: pick any template with small weight
-                    candidates = [t for t in self.map.generator.templates if t.get(
-                        "kind") == "template" and t.get("type") in ("debris", "item", "log")]
-                    if not candidates:
-                        continue
-                    tpl = self.rng.choice(candidates)
-                obj = self.map.generator._instantiate_from_template(tpl, sec)
-                sec.objects.append(obj)
-
-        def _load_ambient_messages(self, path: str = None):
-            """
-            Robustní loader ambientních zpráv.
-            - path: může být absolutní nebo relativní; pokud None, zkusíme několik standardních míst.
-            - výstup: self.ambient_messages = list[str]
-            - debug: vypisuje do stderr, co našel / proč selhal.
-            """
-            from pathlib import Path
-            import json
-            import sys
-
-            self.ambient_messages = []
-
-            # candidate paths (in order)
-            candidates = []
-            if path:
-                candidates.append(Path(path))
-            # data/ sibling of the eidolon package directory (installed layout)
-            candidates.append(Path(__file__).resolve().parent /
-                            "data" / "ambient_messages.json")
-            # one level above the package (source tree / legacy installed layout)
-            candidates.append(Path(__file__).resolve(
-            ).parent.parent / "data" / "ambient_messages.json")
-            # cwd/data (fallback for running from project root)
-            candidates.append(Path.cwd() / "data" / "ambient_messages.json")
-
-            tried = []
-            for p in candidates:
-                try:
-                    p = p.resolve()
-                except Exception:
-                    # ignore resolution errors, keep original Path
-                    pass
-                tried.append(str(p))
-                if not p.exists():
-                    continue
-                try:
-                    with p.open("r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    if isinstance(data, list):
-                        msgs = [str(s).strip()
-                                for s in data if isinstance(s, str) and s.strip()]
-                        if msgs:
-                            self.ambient_messages = msgs
-                            print(
-                                f"[debug] loaded {len(msgs)} ambient messages from {p}", file=sys.stderr)
-                            return
-                        else:
-                            print(
-                                f"[debug] file {p} parsed but contains no valid strings", file=sys.stderr)
+                p = p.resolve()
+            except Exception:
+                # ignore resolution errors, keep original Path
+                pass
+            tried.append(str(p))
+            if not p.exists():
+                continue
+            try:
+                with p.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    msgs = [
+                        str(s).strip() for s in data if isinstance(s, str) and s.strip()
+                    ]
+                    if msgs:
+                        self.ambient_messages = msgs
+                        print(
+                            f"[debug] loaded {len(msgs)} ambient messages from {p}",
+                            file=sys.stderr,
+                        )
+                        return
                     else:
                         print(
-                            f"[debug] file {p} parsed but top-level JSON is not a list", file=sys.stderr)
-                except Exception as e:
+                            f"[debug] file {p} parsed but contains no valid strings",
+                            file=sys.stderr,
+                        )
+                else:
                     print(
-                        f"[debug] failed to read/parse {p}: {e}", file=sys.stderr)
+                        f"[debug] file {p} parsed but top-level JSON is not a list",
+                        file=sys.stderr,
+                    )
+            except Exception as e:
+                print(f"[debug] failed to read/parse {p}: {e}", file=sys.stderr)
 
-            # nothing found
-            print(
-                f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
-            self.ambient_messages = []
+        # nothing found
+        print(f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
+        self.ambient_messages = []
 
-        def debug_emit_ambient(self):
-            if not getattr(self, "ambient_messages", None):
-                import sys
-                print("[debug] no ambient messages loaded", file=sys.stderr)
-                return
-            # choose using game RNG for reproducibility
-            msg = self.rng.choice(self.ambient_messages) if getattr(
-                self, "rng", None) else self.ambient_messages[0]
-            # debug print to stderr and push to in‑game messages
+    def debug_emit_ambient(self):
+        if not getattr(self, "ambient_messages", None):
             import sys
-            print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
-            self.push_message(msg)
 
-        def _handle_quit_confirm(self):
-            if not self.awaiting_quit_confirm:
-                self.awaiting_quit_confirm = True
-            self._show_quit_dialog()
+            print("[debug] no ambient messages loaded", file=sys.stderr)
+            return
+        # choose using game RNG for reproducibility
+        msg = (
+            self.rng.choice(self.ambient_messages)
+            if getattr(self, "rng", None)
+            else self.ambient_messages[0]
+        )
+        # debug print to stderr and push to in‑game messages
+        import sys
 
-        def _show_quit_dialog(self):
-            """
-            Vykreslí modální quit dialog doprostřed obrazovky.
-            Blokuje, dokud hráč nezmáčkne Y nebo N.
-            """
-            h, w = self.stdscr.getmaxyx()
+        print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
+        self.push_message(msg)
 
-            dialog_w = 32
-            dialog_h = 5
+    def _handle_quit_confirm(self):
+        if not self.awaiting_quit_confirm:
+            self.awaiting_quit_confirm = True
+        self._show_quit_dialog()
 
-            x0 = (w - dialog_w) // 2
-            y0 = (h - dialog_h) // 2
+    def _show_quit_dialog(self):
+        """
+        Vykreslí modální quit dialog doprostřed obrazovky.
+        Blokuje, dokud hráč nezmáčkne Y nebo N.
+        """
+        h, w = self.stdscr.getmaxyx()
 
-            win = curses.newwin(dialog_h, dialog_w, y0, x0)
-            win.border()
+        dialog_w = 32
+        dialog_h = 5
 
-            win.addstr(1, (dialog_w - len("Quit the game?")) //
-                    2, "Quit the game?")
-            win.addstr(3, (dialog_w - len("[Y]es   [N]o")) // 2, "[Y]es   [N]o")
+        x0 = (w - dialog_w) // 2
+        y0 = (h - dialog_h) // 2
 
-            win.refresh()
+        win = curses.newwin(dialog_h, dialog_w, y0, x0)
+        win.border()
 
-            while True:
-                ch = self.stdscr.getch()
-                if ch in (ord('y'), ord('Y')):
-                    self.running = False
-                    return
-                if ch in (ord('n'), ord('N')):
-                    self.awaiting_quit_confirm = False
+        win.addstr(1, (dialog_w - len("Quit the game?")) // 2, "Quit the game?")
+        win.addstr(3, (dialog_w - len("[Y]es   [N]o")) // 2, "[Y]es   [N]o")
+
+        win.refresh()
+
+        while True:
+            ch = self.stdscr.getch()
+            if ch in (ord("y"), ord("Y")):
+                self.running = False
                 return
+            if ch in (ord("n"), ord("N")):
+                self.awaiting_quit_confirm = False
+            return
 
-        def _show_escape_dialog(self):
-            """
-            Jednoduchý modální dialog po použití escape podu.
-            Zobrazí final stats a [Ok]. Po Enter / libovolné klávese ukončí hru.
-            """
+    def _show_escape_dialog(self):
+        """
+        Jednoduchý modální dialog po použití escape podu.
+        Zobrazí final stats a [Ok]. Po Enter / libovolné klávese ukončí hru.
+        """
+        try:
+            h, w = self.stdscr.getmaxyx()
+        except Exception:
+            # fallback: textové zprávy pokud není stdscr
             try:
-                h, w = self.stdscr.getmaxyx()
+                self.push_message(
+                    "You successfully used the escape pod and escaped to safety."
+                )
+                self.push_message(
+                    f"Final Health: {getattr(self.player, 'health', 'N/A')}"
+                )
+                self.push_message(
+                    f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}"
+                )
             except Exception:
-                # fallback: textové zprávy pokud není stdscr
-                try:
-                    self.push_message(
-                        "You successfully used the escape pod and escaped to safety.")
-                    self.push_message(
-                        f"Final Health: {getattr(self.player, 'health', 'N/A')}")
-                    self.push_message(
-                        f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}")
-                except Exception:
-                    pass
-                # ukončí hru
+                pass
+            # ukončí hru
+            self.running = False
+            return
+
+        dialog_w = min(60, w - 4)
+        dialog_h = 7
+        x0 = (w - dialog_w) // 2
+        y0 = (h - dialog_h) // 2
+
+        win = curses.newwin(dialog_h, dialog_w, y0, x0)
+        try:
+            win.keypad(True)
+        except Exception:
+            pass
+        win.border()
+
+        title = " Escape Pod "
+        try:
+            win.addstr(0, max(1, (dialog_w - len(title)) // 2), title, curses.A_BOLD)
+        except Exception:
+            pass
+
+        lines = [
+            "You successfully used the escape pod and escaped to safety.",
+            "",
+            f"Final Health: {getattr(self.player, 'health', 'N/A')}",
+            f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}",
+            "",
+            "[ Ok ]  Press Enter to exit",
+        ]
+
+        for i, line in enumerate(lines, start=1):
+            try:
+                pad = max(0, (dialog_w - 2 - len(line)) // 2)
+                win.addstr(i, 1 + pad, line[: dialog_w - 2])
+            except Exception:
+                pass
+
+        win.refresh()
+
+        # blokující smyčka: čekej na Enter nebo libovolnou klávesu
+        while True:
+            try:
+                # čteme přímo z dialogového okna, ne ze stdscr
+                ch = win.getch()
+            except KeyboardInterrupt:
+                # ignoruj opakované Ctrl+C během dialogu
+                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                continue
+            except Exception as e:
+                # pokud getch selže, ukončí hru
+                self.push_message(f"Exiting game. {e}")
                 self.running = False
                 return
 
-            dialog_w = min(60, w - 4)
-            dialog_h = 7
-            x0 = (w - dialog_w) // 2
-            y0 = (h - dialog_h) // 2
+            # Enter nebo Return
+            if ch in (10, 13):
+                self.running = False
+                return
+            # také akceptuj libovolnou jinou klávesu jako potvrzení
+            if ch != -1:
+                self.running = False
+            return
 
-            win = curses.newwin(dialog_h, dialog_w, y0, x0)
+    def _handle_escape_confirm(self):
+        """
+        Spustí escape dialog pokud je awaiting_escape_confirm True.
+        Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
+        """
+        if not getattr(self, "awaiting_escape_confirm", False):
+            # pokud není nastaven, nic nedělej (command nastaví flag)
+            self.awaiting_escape_confirm = True
+            return
+
+        try:
+            # zavolat dialog (blokující)
+            self._show_escape_dialog()
+        except KeyboardInterrupt:
+            # ignoruj opakované Ctrl+C během dialogu
             try:
-                win.keypad(True)
+                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
             except Exception:
                 pass
-            win.border()
-
-            title = " Escape Pod "
-            try:
-                win.addstr(0, max(1, (dialog_w - len(title)) // 2),
-                        title, curses.A_BOLD)
-            except Exception:
-                pass
-
-            lines = [
-                "You successfully used the escape pod and escaped to safety.",
-                "",
-                f"Final Health: {getattr(self.player, 'health', 'N/A')}",
-                f"Final Sanity: {getattr(self.player, 'sanity', 'N/A')}",
-                "",
-                "[ Ok ]  Press Enter to exit"
-            ]
-
-            for i, line in enumerate(lines, start=1):
-                try:
-                    pad = max(0, (dialog_w - 2 - len(line)) // 2)
-                    win.addstr(i, 1 + pad, line[:dialog_w - 2])
-                except Exception:
-                    pass
-
-            win.refresh()
-
-            # blokující smyčka: čekej na Enter nebo libovolnou klávesu
-            while True:
-                try:
-                    # čteme přímo z dialogového okna, ne ze stdscr
-                    ch = win.getch()
-                except KeyboardInterrupt:
-                    # ignoruj opakované Ctrl+C během dialogu
-                    self.push_message(
-                        "[debug] escape dialog interrupted by Ctrl+C")
-                    continue
-                except Exception as e:
-                    # pokud getch selže, ukončí hru
-                    self.push_message(f"Exiting game. {e}")
-                    self.running = False
-                    return
-
-                # Enter nebo Return
-                if ch in (10, 13):
-                    self.running = False
-                    return
-                # také akceptuj libovolnou jinou klávesu jako potvrzení
-                if ch != -1:
-                    self.running = False
-                return
-
-        def _handle_escape_confirm(self):
-            """
-            Spustí escape dialog pokud je awaiting_escape_confirm True.
-            Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
-            """
-            if not getattr(self, "awaiting_escape_confirm", False):
-                # pokud není nastaven, nic nedělej (command nastaví flag)
-                self.awaiting_escape_confirm = True
-                return
-
-            try:
-                # zavolat dialog (blokující)
-                self._show_escape_dialog()
-            except KeyboardInterrupt:
-                # ignoruj opakované Ctrl+C během dialogu
-                try:
-                    self.push_message(
-                        "[debug] escape dialog interrupted by Ctrl+C")
-                except Exception:
-                    pass
-            finally:
-                # vždy vyčistit flag, aby run() pokračovalo normálně
-                self.awaiting_escape_confirm = False
+        finally:
+            # vždy vyčistit flag, aby run() pokračovalo normálně
+            self.awaiting_escape_confirm = False

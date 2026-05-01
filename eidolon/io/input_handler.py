@@ -142,6 +142,13 @@ class InputHandler:
             self.on_action = on_action_or_game if callable(on_action_or_game) else None
             self.stdscr = stdscr
 
+        if getattr(self, "stdscr", None):
+            try:
+                self.stdscr.nodelay(True)
+                self.stdscr.keypad(True)
+            except Exception:
+                pass     
+
         self.deadzone = float(deadzone)
         self.backend = backend_name()
         self._using_controller = False
@@ -318,6 +325,12 @@ class InputHandler:
         - If pygame joystick present, pump events and handle them.
         - Else if evdev backend, poll device list (detection only).
         """
+          # poll curses keyboard first (priority)
+        if getattr(self, "stdscr", None):
+            try:
+                self._poll_curses_once()
+            except Exception as e:
+                self.logger.exception(f"InputHandler: curses poll failed {e}")
         if _PYGAME and self._pygame_joystick:
             for ev in _PYGAME.event.get():
                 self._handle_pygame_event(ev)
@@ -426,6 +439,102 @@ class InputHandler:
             self.controller_info = None
             logger.info("InputHandler: evdev controller removed")
         # full evdev event reading is intentionally omitted here; prefer pygame.
+        
+    def _poll_curses_once(self):
+        """
+        Non-blocking read from curses stdscr (if provided).
+        Converts keys to token dicts and enqueues them.
+        """
+        if not getattr(self, "stdscr", None):
+            return
+
+        try:
+            # ensure non-blocking
+            try:
+                self.stdscr.nodelay(True)
+            except Exception:
+                pass
+
+            ch = self.stdscr.getch()
+        except Exception:
+            ch = -1
+
+        if ch in (None, -1):
+            return
+
+        # Ctrl-C / SIGINT
+        if ch == 3:
+            self._enqueue_event({"type": "control", "key": "SIGINT"})
+            return
+
+        # arrow keys and WASD
+        try:
+            if ch == curses.KEY_UP or ch in (ord('w'), ord('W')):
+                self._enqueue_event({"type": "move_dir", "dir": "UP"})
+                return
+            if ch == curses.KEY_DOWN or ch in (ord('s'), ord('S')):
+                self._enqueue_event({"type": "move_dir", "dir": "DOWN"})
+                return
+            if ch == curses.KEY_LEFT or ch in (ord('a'), ord('A')):
+                self._enqueue_event({"type": "move_dir", "dir": "LEFT"})
+                return
+            if ch == curses.KEY_RIGHT or ch in (ord('d'), ord('D')):
+                self._enqueue_event({"type": "move_dir", "dir": "RIGHT"})
+                return
+        except Exception:
+            pass
+
+        # quick command shortcuts
+        if ch in (ord('h'), ord('H')):
+            self._enqueue_event({"type": "command", "cmd": "help"})
+            return
+        if ch in (ord('c'), ord('C')):
+            self._enqueue_event({"type": "command", "cmd": "scan"})
+            return
+        if ch in (ord('l'), ord('L')):
+            self._enqueue_event({"type": "command", "cmd": "logs"})
+            return
+        if ch in (ord('x'), ord('X')):
+            self._enqueue_event({"type": "action", "name": "use"})
+            return
+        if ch in (ord('i'), ord('I')):
+            self._enqueue_event({"type": "action", "name": "inspect"})
+            return
+        if ch in (ord('q'), ord('Q')):
+            self._enqueue_event({"type": "control", "key": "QUIT"})
+            return
+
+        # colon command entry: ':' then read line (blocking)
+        if ch == ord(':'):
+            try:
+                # switch to blocking to read the rest of the line
+                try:
+                    self.stdscr.nodelay(False)
+                except Exception:
+                    pass
+                curses.echo()
+                s = self.stdscr.getstr().decode(errors="ignore").strip()
+                curses.noecho()
+                if s:
+                    self._enqueue_event({"type": "command", "cmd": s})
+            except Exception:
+                try:
+                    curses.noecho()
+                except Exception:
+                    pass
+            finally:
+                try:
+                    self.stdscr.nodelay(True)
+                except Exception:
+                    pass
+            return
+
+        # printable fallback: enqueue as single-char command
+        if 0 <= ch < 256:
+            chs = chr(ch)
+            if chs.isprintable():
+                self._enqueue_event({"type": "command", "cmd": chs})
+    
 
     # --- utilities / cleanup ---------------------------------------------
     def stop(self):
