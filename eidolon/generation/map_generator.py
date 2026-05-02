@@ -5,21 +5,27 @@ import sys
 from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
-from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, SEED, DEFAULT_BASE_DENSITY, DEFAULT_MIN_DISTANCE, SECTOR_TYPE_WEIGHTS
+from eidolon.config import (
+    MIN_MAP_WIDTH,
+    MIN_MAP_HEIGHT,
+    SEED,
+    DEFAULT_BASE_DENSITY,
+    DEFAULT_MIN_DISTANCE,
+    SECTOR_TYPE_WEIGHTS,
+)
 from eidolon.generation.log_loader import load_logs
+
 
 def _find_data_dir():
     here = Path(__file__).resolve()
     for up in range(1, 5):
-        candidate = here.parents[up] / "data" 
+        candidate = here.parents[up] / "data"
         if candidate.exists() and candidate.is_dir():
             return candidate
-    candidate = Path.cwd() / "data" 
+    candidate = Path.cwd() / "data"
     if candidate.exists() and candidate.is_dir():
         return candidate
     return None
-
-
 
 
 def _load_templates(data_dir):
@@ -56,7 +62,12 @@ def _load_templates(data_dir):
             print(f"[mapgen] failed to load {p}: {e}", file=sys.stderr)
 
     # preferred explicit files
-    preferred_files = ["descriptions.json", "items.json", "environment.json", "config.json"]
+    preferred_files = [
+        "descriptions.json",
+        "items.json",
+        "environment.json",
+        "config.json",
+    ]
     for fname in preferred_files:
         p = data_dir / fname
         if p.exists():
@@ -77,7 +88,6 @@ def _load_templates(data_dir):
     return templates, by_id, config
 
 
-
 class MapGenerator:
     """
     Robustní generátor mapy.
@@ -85,7 +95,10 @@ class MapGenerator:
     - používá vlastní RNG instance (seed=None => náhodný).
     - base_density a min_distance laditelné.
     """
-    def __init__(self, width=None, height=None, seed=None, base_density=None, min_distance=None):
+
+    def __init__(
+        self, width=None, height=None, seed=None, base_density=None, min_distance=None
+    ):
         self.width = int(width) if width is not None else int(MIN_MAP_WIDTH)
         self.height = int(height) if height is not None else int(MIN_MAP_HEIGHT)
         if self.width < MIN_MAP_WIDTH:
@@ -99,36 +112,70 @@ class MapGenerator:
             # system entropy seed for true randomness
             sys_seed = random.SystemRandom().randint(0, 2**30)
             self.rng = random.Random(sys_seed)
-            print(f"[mapgen][debug] using system-random seed={sys_seed}", file=sys.stderr)
+            print(
+                f"[mapgen][debug] using system-random seed={sys_seed}", file=sys.stderr
+            )
         else:
             self.rng = random.Random(int(use_seed))
             print(f"[mapgen][debug] using seed={int(use_seed)}", file=sys.stderr)
 
-        self.base_density = float(base_density) if base_density is not None else float(DEFAULT_BASE_DENSITY)
-        self.min_distance = int(min_distance) if min_distance is not None else int(DEFAULT_MIN_DISTANCE)
+        self.base_density = (
+            float(base_density)
+            if base_density is not None
+            else float(DEFAULT_BASE_DENSITY)
+        )
+        self.min_distance = (
+            int(min_distance) if min_distance is not None else int(DEFAULT_MIN_DISTANCE)
+        )
 
         self.data_dir = _find_data_dir()
-        self.templates, self.template_index, self.config = _load_templates(self.data_dir)
+        self.templates, self.template_index, self.config = _load_templates(
+            self.data_dir
+        )
         self.log_pool = load_logs()
-        data_path = (self.data_dir / "objects.json") if self.data_dir else Path("data/objects/objects.json")
-        print(f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}", file=sys.stderr)
-        print(f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json", file=sys.stderr)
+        data_path = (
+            (self.data_dir / "objects.json")
+            if self.data_dir
+            else Path("data/objects/objects.json")
+        )
+        print(
+            f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}",
+            file=sys.stderr,
+        )
+        print(
+            f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json",
+            file=sys.stderr,
+        )
 
-        self.sector_types = self.config.get("sector_types", ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"])
+        self.sector_types = self.config.get(
+            "sector_types",
+            ["BRIDGE", "ENGINEERING", "CREW", "MEDBAY", "CARGO", "AIRLOCK", "EMPTY"],
+        )
         self.environment_map = {
             t["sector_type"]: t["environment"]
             for t in self.templates
             if isinstance(t, dict) and t.get("kind") == "environment"
         }
 
-
     # --- helper methods for region placement ---------------------------------
     def _rects_overlap(self, a, b, gap=0):
         ax0, ay0, ax1, ay1 = a
         bx0, by0, bx1, by1 = b
-        return not (ax1 + gap < bx0 or bx1 + gap < ax0 or ay1 + gap < by0 or by1 + gap < ay0)
+        return not (
+            ax1 + gap < bx0 or bx1 + gap < ax0 or ay1 + gap < by0 or by1 + gap < ay0
+        )
 
-    def _place_region(self, map_w, map_h, width, height, prefer_area=None, existing=None, attempts=80, min_gap=None):
+    def _place_region(
+        self,
+        map_w,
+        map_h,
+        width,
+        height,
+        prefer_area=None,
+        existing=None,
+        attempts=80,
+        min_gap=None,
+    ):
         """
         Try to place a rectangle (width x height) somewhere on the map so it doesn't
         overlap existing rectangles (with min_gap). prefer_area is (x0,y0,x1,y1) to bias placement.
@@ -151,8 +198,12 @@ class MapGenerator:
                     rx = self.rng.randint(0, max(0, map_w - width))
                     ry = self.rng.randint(0, max(0, map_h - height))
                 else:
-                    rx = self.rng.randint(px0, max(px0, min(px1 - width + 1, map_w - width)))
-                    ry = self.rng.randint(py0, max(py0, min(py1 - height + 1, map_h - height)))
+                    rx = self.rng.randint(
+                        px0, max(px0, min(px1 - width + 1, map_w - width))
+                    )
+                    ry = self.rng.randint(
+                        py0, max(py0, min(py1 - height + 1, map_h - height))
+                    )
             else:
                 rx = self.rng.randint(0, max(0, map_w - width))
                 ry = self.rng.randint(0, max(0, map_h - height))
@@ -194,7 +245,13 @@ class MapGenerator:
         grid = {}
         for y in range(h):
             for x in range(w):
-                s = Sector(x, y, f"EMPTY-{x}-{y}", "EMPTY", "A narrow corridor. The lights are dim.")
+                s = Sector(
+                    x,
+                    y,
+                    f"EMPTY-{x}-{y}",
+                    "EMPTY",
+                    "A narrow corridor. The lights are dim.",
+                )
                 s.linger_counter = getattr(s, "linger_counter", 0)
                 s.linger_thresholds = getattr(s, "linger_thresholds", {}) or {}
                 if not hasattr(s, "objects") or s.objects is None:
@@ -204,14 +261,14 @@ class MapGenerator:
         # randomly assign sector types across the map
         # weights are normalized to sum to 1.0
         sector_type_weights = SECTOR_TYPE_WEIGHTS
-        
+
         bridge_placed = False
         for y in range(h):
             for x in range(w):
                 sector = grid[(x, y)]
                 rand = self.rng.random()
                 cumulative = 0.0
-                
+
                 # randomly select a sector type based on weights
                 for stype, weight in sector_type_weights.items():
                     cumulative += weight
@@ -239,7 +296,6 @@ class MapGenerator:
                     if st:
                         desc_map.setdefault(st, []).append(txt)
 
-
         except Exception:
             desc_map = {}
 
@@ -249,7 +305,7 @@ class MapGenerator:
         # populate sectors in random order to avoid bias
         keys = list(grid.keys())
         self.rng.shuffle(keys)
-        for (x, y) in keys:
+        for x, y in keys:
             sector = grid[(x, y)]
             # vyber základní popis z desc_map (pokud existuje)
             texts = desc_map.get(sector.type)
@@ -323,14 +379,16 @@ class MapGenerator:
             sec = grid[(ex_x, ex_y)]
             if not hasattr(sec, "objects") or sec.objects is None:
                 sec.objects = []
-            sec.objects.append({
-                "id": "escape-pod",
-                "type": "item",
-                "name": "escape-pod",
-                "title": "Escape Pod",
-                "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch.",
-                "on_use": {"action": "escape"}
-            })
+            sec.objects.append(
+                {
+                    "id": "escape-pod",
+                    "type": "item",
+                    "name": "escape-pod",
+                    "title": "Escape Pod",
+                    "description": "A small escape pod interface. Use 'use escape-pod' to attempt launch.",
+                    "on_use": {"action": "escape"},
+                }
+            )
 
         # debug summary of placed objects
         total = 0
@@ -341,7 +399,10 @@ class MapGenerator:
             for o in getattr(sec, "objects", []) or []:
                 t = o.get("type", "unknown") if isinstance(o, dict) else "unknown"
                 per_type[t] = per_type.get(t, 0) + 1
-        print(f"[mapgen][debug] placed total objects={total}, by_type={per_type}", file=sys.stderr)
+        print(
+            f"[mapgen][debug] placed total objects={total}, by_type={per_type}",
+            file=sys.stderr,
+        )
 
         # cleanup
         self.current_grid = None
@@ -362,11 +423,10 @@ class MapGenerator:
             "MEDBAY": "Medical scanners and treatment equipment are visible.",
             "CARGO": "Storage containers and cargo nets fill the space.",
             "AIRLOCK": "Pressure suits and emergency equipment are stored here.",
-            "EMPTY": "Bare walls and minimal lighting characterize this area."
+            "EMPTY": "Bare walls and minimal lighting characterize this area.",
         }
         text = base_env.get(sector_type, "Sparse and functional.")
         return {"description": text}
-
 
     def _choose_templates_for_sector(self, sector_type):
         choices = []
@@ -414,11 +474,16 @@ class MapGenerator:
                         event_id = tpl.get("linger_event", tpl.get("id"))
                         if event_id:
                             th = tpl.get("linger_threshold", 2)
-                            sector.linger_thresholds[th] = sector.linger_thresholds.get(th, []) + [event_id]
+                            sector.linger_thresholds[th] = sector.linger_thresholds.get(
+                                th, []
+                            ) + [event_id]
                             obj["_linger_threshold"] = th
                             obj["_linger_event"] = event_id
             except Exception as e:
-                print(f"[mapgen] error instantiating template {tpl.get('id','?')}: {e}", file=sys.stderr)
+                print(
+                    f"[mapgen] error instantiating template {tpl.get('id','?')}: {e}",
+                    file=sys.stderr,
+                )
                 continue
 
     def _instantiate_from_template(self, tpl, sector):
@@ -453,9 +518,13 @@ class MapGenerator:
                 obj["content"] = content
                 if not obj.get("title"):
                     obj["title"] = selected_log.get("title", obj.get("name", "log"))
-                obj["fragmented"] = self.rng.random() < obj.get("fragmented_chance", 0.3)
+                obj["fragmented"] = self.rng.random() < obj.get(
+                    "fragmented_chance", 0.3
+                )
             else:
-                obj["content"] = obj.get("content_template", "{text}").format(text="An unreadable log entry.")
+                obj["content"] = obj.get("content_template", "{text}").format(
+                    text="An unreadable log entry."
+                )
                 obj["fragmented"] = False
 
         return obj

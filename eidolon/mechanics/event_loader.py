@@ -3,12 +3,14 @@ import json
 from pathlib import Path
 import sys
 
+
 def _candidate_paths():
     # 1) project_root/data/events/events.json
     p1 = Path(__file__).resolve().parents[2] / "data" / "events" / "events.json"
     # 2) package-local eidolon/data/events/events.json (fallback)
     p2 = Path(__file__).resolve().parents[1] / "data" / "events" / "events.json"
     return [p1, p2]
+
 
 def load_event_defs():
     paths = _candidate_paths()
@@ -26,5 +28,8 @@ def load_event_defs():
                 print(f"[event_loader] Error loading {p}: {e}", file=sys.stderr)
                 return {}
     # nothing found
-    print(f"[event_loader] no events.json found in candidates: {[str(x) for x in paths]}", file=sys.stderr)
+    print(
+        f"[event_loader] no events.json found in candidates: {[str(x) for x in paths]}",
+        file=sys.stderr,
+    )
     return {}

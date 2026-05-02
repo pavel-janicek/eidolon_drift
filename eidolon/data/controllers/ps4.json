@@ -1,0 +1,56 @@
+{
+  "name": "Sony DualShock 4",
+  "aliases": ["PS4 Controller", "Wireless Controller", "DualShock 4"],
+  "platform": ["linux", "windows", "mac"],
+  "notes": "Default mapping used in project; adjust per platform if needed.",
+  "deadzone": 0.08,
+  "invert_y": false,
+  "buttons": {
+    "square": 2,
+    "x": 0,
+    "circle": 1,
+    "triangle": 3,
+    "share": 4,
+    "options": 6,
+    "ps": 5,
+    "touch": 15
+  },
+  "axes": {
+    "left_x": 0,
+    "left_y": 1,
+    "right_x": 2,
+    "right_y": 3,
+    "l2_axis": 4,
+    "r2_axis": 5
+  },
+  "dpad_buttons": {
+    "11": "UP",
+    "12": "DOWN",
+    "13": "LEFT",
+    "14": "RIGHT"
+  },
+  "action_by_button_name": {
+    "x": "use",
+    "circle": "inspect",
+    "square": "logs",
+    "triangle": "scan",
+    "r2_axis": "help"
+  },
+  "hints": {
+    "notes": "If your platform reports different axis indices, create platform-specific override file.",
+    "defauult action mapping": {
+        "move_up": "dpad_up",
+        "move_down": "dpad_down",
+        "move_left": "dpad_left",
+        "move_right": "dpad_right",
+        "left_stick_up": "UP",
+        "left_stick_down": "DOWN",
+        "left_stick_left": "LEFT",
+        "left_stick_right": "RIGHT",
+        "use": "x",
+        "inspect": "circle",
+        "logs": "square",
+        "scan": "triangle"
+    }
+  }
+}

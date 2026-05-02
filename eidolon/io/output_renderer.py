@@ -11,6 +11,7 @@ except ImportError:
     except ImportError:
         # Fallback: create a mock curses module for basic functionality
         import sys
+
         class MockCurses:
             COLOR_CYAN = 1
             COLOR_YELLOW = 2
@@ -62,15 +63,18 @@ except ImportError:
                 return func(*args)
 
         curses = MockCurses()
-        print("Warning: Curses not available. Using fallback text interface.", file=sys.stderr)
+        print(
+            "Warning: Curses not available. Using fallback text interface.",
+            file=sys.stderr,
+        )
 from eidolon.io.description_renderer import DescriptionRenderer
 from eidolon.io.map_renderer import MapRenderer
 from eidolon.io.status_renderer import StatusRenderer
 from eidolon.world.map import Map
 from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME, GAME_VERSION
 
-MIN_MAP_W = MIN_MAP_WIDTH if 'MIN_MAP_WIDTH' in globals() else 10
-MIN_MAP_H = MIN_MAP_HEIGHT if 'MIN_MAP_HEIGHT' in globals() else 5
+MIN_MAP_W = MIN_MAP_WIDTH if "MIN_MAP_WIDTH" in globals() else 10
+MIN_MAP_H = MIN_MAP_HEIGHT if "MIN_MAP_HEIGHT" in globals() else 5
 
 
 class OutputRenderer:
@@ -89,11 +93,29 @@ class OutputRenderer:
 
         # colors and theme
         self.colors_available = False
-        self.theme = DEFAULT_THEME if 'DEFAULT_THEME' in globals() else "dark"
+        self.theme = DEFAULT_THEME if "DEFAULT_THEME" in globals() else "dark"
         self.THEMES = {
-            "dark": {1: (curses.COLOR_CYAN, -1), 2: (curses.COLOR_YELLOW, -1), 3: (curses.COLOR_GREEN, -1), 4: (curses.COLOR_RED, -1), 5: (curses.COLOR_MAGENTA, -1)},
-            "retro": {1: (curses.COLOR_WHITE, curses.COLOR_BLUE), 2: (curses.COLOR_BLACK, curses.COLOR_YELLOW), 3: (curses.COLOR_BLACK, curses.COLOR_GREEN), 4: (curses.COLOR_WHITE, curses.COLOR_RED), 5: (curses.COLOR_BLACK, curses.COLOR_MAGENTA)},
-            "high_contrast": {1: (curses.COLOR_WHITE, curses.COLOR_BLACK), 2: (curses.COLOR_BLACK, curses.COLOR_WHITE), 3: (curses.COLOR_YELLOW, curses.COLOR_BLACK), 4: (curses.COLOR_RED, curses.COLOR_BLACK), 5: (curses.COLOR_MAGENTA, curses.COLOR_BLACK)}
+            "dark": {
+                1: (curses.COLOR_CYAN, -1),
+                2: (curses.COLOR_YELLOW, -1),
+                3: (curses.COLOR_GREEN, -1),
+                4: (curses.COLOR_RED, -1),
+                5: (curses.COLOR_MAGENTA, -1),
+            },
+            "retro": {
+                1: (curses.COLOR_WHITE, curses.COLOR_BLUE),
+                2: (curses.COLOR_BLACK, curses.COLOR_YELLOW),
+                3: (curses.COLOR_BLACK, curses.COLOR_GREEN),
+                4: (curses.COLOR_WHITE, curses.COLOR_RED),
+                5: (curses.COLOR_BLACK, curses.COLOR_MAGENTA),
+            },
+            "high_contrast": {
+                1: (curses.COLOR_WHITE, curses.COLOR_BLACK),
+                2: (curses.COLOR_BLACK, curses.COLOR_WHITE),
+                3: (curses.COLOR_YELLOW, curses.COLOR_BLACK),
+                4: (curses.COLOR_RED, curses.COLOR_BLACK),
+                5: (curses.COLOR_MAGENTA, curses.COLOR_BLACK),
+            },
         }
 
         self._init_colors()
@@ -101,15 +123,15 @@ class OutputRenderer:
             self.apply_theme(self.theme)
             # object colors
             self.obj_color_map = {
-            "item": 30,
+                "item": 30,
             }
 
             # sector colors (only if no object)
             self.sector_color_map = {
-            "MEDBAY": 31,
-            "BRIDGE": 32,
-            "ENGINEERING": 33,
-            "AIRLOCK": 34,
+                "MEDBAY": 31,
+                "BRIDGE": 32,
+                "ENGINEERING": 33,
+                "AIRLOCK": 34,
             }
         except Exception:
             pass
@@ -134,11 +156,11 @@ class OutputRenderer:
                 curses.init_pair(11, curses.COLOR_YELLOW, -1)
                 # pair 12 = red on default background
                 curses.init_pair(12, curses.COLOR_RED, -1)
-                curses.init_pair(30, 250, -1)   # items (light gray)
-                curses.init_pair(31, 118, -1)   # medbay (greenish)
-                curses.init_pair(32, 160, -1)   # bridge (red)
-                curses.init_pair(33, 141, -1)   # engineering (light lavender)
-                curses.init_pair(34, 189, -1)   # airlock (silver-blue)
+                curses.init_pair(30, 250, -1)  # items (light gray)
+                curses.init_pair(31, 118, -1)  # medbay (greenish)
+                curses.init_pair(32, 160, -1)  # bridge (red)
+                curses.init_pair(33, 141, -1)  # engineering (light lavender)
+                curses.init_pair(34, 189, -1)  # airlock (silver-blue)
                 self.colors_available = True
         except Exception:
             self.colors_available = False
@@ -188,13 +210,19 @@ class OutputRenderer:
 
         # cílová šířka mapy = min(nativní šířka mapy + okraje, dostupný prostor)
         desired_map_w = min(
-            self.map.width + 2, max_map_w_with_desc if max_map_w_with_desc >= MIN_MAP_WIDTH else max_map_w_full)
+            self.map.width + 2,
+            (
+                max_map_w_with_desc
+                if max_map_w_with_desc >= MIN_MAP_WIDTH
+                else max_map_w_full
+            ),
+        )
         # zajistit minimální šířku
         if desired_map_w < MIN_MAP_WIDTH:
             desired_map_w = MIN_MAP_WIDTH
 
         # rozhodnutí, zda popis bude vpravo nebo pod mapou
-        side_desc = (desired_map_w + preferred_desc_w + 6 <= maxx)
+        side_desc = desired_map_w + preferred_desc_w + 6 <= maxx
 
         if side_desc:
             map_w = desired_map_w
@@ -268,17 +296,33 @@ class OutputRenderer:
                 self.game.push_message(f"[debug] desc_win error: {e}")
                 self._desc_win_err_emitted = True
 
-    # jednorázový layout debug
+        # jednorázový layout debug
         if not self._layout_debug_emitted:
             try:
                 info = {
                     "term": (maxy, maxx),
-                    "map_win": None if not self.map_win else (self.map_win.getbegyx(), self.map_win.getmaxyx()),
-                    "status_win": None if not self.status_win else (self.status_win.getbegyx(), self.status_win.getmaxyx()),
-                    "msg_win": None if not self.msg_win else (self.msg_win.getbegyx(), self.msg_win.getmaxyx()),
-                    "desc_win": None if not self.desc_win else (self.desc_win.getbegyx(), self.desc_win.getmaxyx()),
+                    "map_win": (
+                        None
+                        if not self.map_win
+                        else (self.map_win.getbegyx(), self.map_win.getmaxyx())
+                    ),
+                    "status_win": (
+                        None
+                        if not self.status_win
+                        else (self.status_win.getbegyx(), self.status_win.getmaxyx())
+                    ),
+                    "msg_win": (
+                        None
+                        if not self.msg_win
+                        else (self.msg_win.getbegyx(), self.msg_win.getmaxyx())
+                    ),
+                    "desc_win": (
+                        None
+                        if not self.desc_win
+                        else (self.desc_win.getbegyx(), self.desc_win.getmaxyx())
+                    ),
                 }
-                #self.game.push_message(f"[debug] layout info: {info}")
+                # self.game.push_message(f"[debug] layout info: {info}")
             except Exception:
                 pass
             self._layout_debug_emitted = True
@@ -290,7 +334,8 @@ class OutputRenderer:
             try:
                 self.stdscr.erase()
                 self.stdscr.addstr(
-                    0, 0, " EIDOLON DRIFT - Incident Response Terminal ", curses.A_BOLD)
+                    0, 0, " EIDOLON DRIFT - Incident Response Terminal ", curses.A_BOLD
+                )
                 self.stdscr.refresh()
             except Exception:
                 pass
@@ -307,9 +352,10 @@ class OutputRenderer:
         try:
             title = f" EIDOLON DRIFT - Incident Response Terminal v{GAME_VERSION} "
             title_x = max(0, (maxx - len(title)) // 2)
-            attr = curses.A_BOLD | (curses.color_pair(
-                1) if self.colors_available else 0)
-            self.stdscr.addstr(0, title_x, title[:maxx-1], attr)
+            attr = curses.A_BOLD | (
+                curses.color_pair(1) if self.colors_available else 0
+            )
+            self.stdscr.addstr(0, title_x, title[: maxx - 1], attr)
         except Exception:
             pass
 
@@ -350,9 +396,6 @@ class OutputRenderer:
             except Exception:
                 pass
 
-
-
-    
     def _render_messages(self):
         win = self.msg_win or self.stdscr
         try:
@@ -360,13 +403,22 @@ class OutputRenderer:
                 win.erase()
                 win.box()
             maxy, maxx = win.getmaxyx()
-            lines = self.game.messages[-(maxy - 2)
-                                         :] if maxy > 2 else self.game.messages[-1:]
+            lines = (
+                self.game.messages[-(maxy - 2) :]
+                if maxy > 2
+                else self.game.messages[-1:]
+            )
             for i, line in enumerate(lines):
                 try:
-                    attr = curses.color_pair(4) | curses.A_BOLD if (self.colors_available and (
-                        "WARNING" in line.upper() or "ANOMALY" in line.upper())) else curses.A_NORMAL
-                    win.addstr(1 + i, 2, line[:maxx - 4], attr)
+                    attr = (
+                        curses.color_pair(4) | curses.A_BOLD
+                        if (
+                            self.colors_available
+                            and ("WARNING" in line.upper() or "ANOMALY" in line.upper())
+                        )
+                        else curses.A_NORMAL
+                    )
+                    win.addstr(1 + i, 2, line[: maxx - 4], attr)
                 except Exception:
                     continue
         except Exception as e:
@@ -382,7 +434,7 @@ class OutputRenderer:
         pad = curses.newpad(pad_h, pad_w)
         for i, ln in enumerate(lines):
             try:
-                pad.addstr(i, 0, ln[:pad_w - 1])
+                pad.addstr(i, 0, ln[: pad_w - 1])
             except Exception:
                 pass
         top = 0
@@ -392,20 +444,21 @@ class OutputRenderer:
             try:
                 stdscr.erase()
                 stdscr.box()
-                stdscr.addstr(0, max(1, (maxx - len(title)) // 2),
-                              title, curses.A_REVERSE)
+                stdscr.addstr(
+                    0, max(1, (maxx - len(title)) // 2), title, curses.A_REVERSE
+                )
                 stdscr.noutrefresh()
                 pad.noutrefresh(top, 0, 1, 1, view_h, pad_w)
                 curses.doupdate()
             except Exception:
                 pass
             ch = stdscr.getch()
-            if ch in (ord('q'), 27):
+            if ch in (ord("q"), 27):
                 break
-            elif ch in (curses.KEY_DOWN, ord('j')):
+            elif ch in (curses.KEY_DOWN, ord("j")):
                 if top + view_h < pad_h:
                     top += 1
-            elif ch in (curses.KEY_UP, ord('k')):
+            elif ch in (curses.KEY_UP, ord("k")):
                 if top > 0:
                     top -= 1
             elif ch == curses.KEY_NPAGE:
@@ -417,7 +470,6 @@ class OutputRenderer:
             elif ch == curses.KEY_END:
                 top = max(0, pad_h - view_h)
         self.render()
-
 
     def wrap_text(self, text, width):
         if not text:

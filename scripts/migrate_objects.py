@@ -37,4 +37,14 @@ if groups.get("config"):
     with (OUT / "config.json").open("w", encoding="utf-8") as fh:
         json.dump(groups["config"], fh, ensure_ascii=False, indent=2)
 
-print("Migration done. Created files:", ", ".join([f.name for f in OUT.glob("*.json") if f.name in ("descriptions.json","items.json","environment.json","config.json")]))
+print(
+    "Migration done. Created files:",
+    ", ".join(
+        [
+            f.name
+            for f in OUT.glob("*.json")
+            if f.name
+            in ("descriptions.json", "items.json", "environment.json", "config.json")
+        ]
+    ),
+)

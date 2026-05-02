@@ -1,6 +1,9 @@
 # Eidolon Drift
 
-**Version 1.0.0** - A Terminal-Based Incident Response Game
+**Version 1.2.0** - A Terminal-Based Incident Response Game
+
+** Controller supported game ***
+
 
 *This game was written by AI (GitHub Copilot) with human guidance and testing.*
 
@@ -21,6 +24,10 @@ The game features atmospheric horror elements with sanity mechanics that affect 
 - **Comprehensive Help System**: In-game commands for navigation and information
 
 ## Game Mechanics
+
+### Joystick support
+- To add new joystick run from project root `PYTHONPATH=$(pwd) python3 -m eidolon.io.input_handler --map-test`
+- Check mapping of your joystick and add its support to data/controllers as a JSON file
 
 ### Movement & Controls
 - **WASD**: Move up/down/left/right

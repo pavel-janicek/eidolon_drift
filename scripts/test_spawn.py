@@ -1,25 +1,31 @@
 #!/usr/bin/env python3
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from eidolon.generation.map_generator import MapGenerator, _find_data_dir
 from collections import Counter, defaultdict
+
 
 def count_photos_in_map(gen, seed=None):
     mg = MapGenerator(seed=seed)
     m = mg.generate()
     counts = Counter()
     positions = defaultdict(list)
-    for (x,y), sec in m.grid.items():
+    for (x, y), sec in m.grid.items():
         for obj in getattr(sec, "objects", []) or []:
             if not isinstance(obj, dict):
                 continue
             oid = obj.get("id") or obj.get("name")
-            if oid in ("item_photo", "item_photo_cursed") or obj.get("name") == "crew-photo":
+            if (
+                oid in ("item_photo", "item_photo_cursed")
+                or obj.get("name") == "crew-photo"
+            ):
                 counts[oid] += 1
-                positions[oid].append((x,y))
+                positions[oid].append((x, y))
     return counts, positions
+
 
 def run_trials(trials=100, seed_base=None):
     total = Counter()
@@ -32,6 +38,7 @@ def run_trials(trials=100, seed_base=None):
             if v:
                 pos_samples[k].extend(v[:5])  # keep a few samples
     return total, pos_samples
+
 
 if __name__ == "__main__":
     TRIALS = 200

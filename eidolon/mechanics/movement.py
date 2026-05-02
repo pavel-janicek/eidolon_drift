@@ -1,13 +1,13 @@
 # eidolon/mechanics/movement.py
 def move_player(ship_map, player, direction):
     dx, dy = 0, 0
-    if direction == 'UP':
+    if direction == "UP":
         dy = -1
-    elif direction == 'DOWN':
+    elif direction == "DOWN":
         dy = 1
-    elif direction == 'LEFT':
+    elif direction == "LEFT":
         dx = -1
-    elif direction == 'RIGHT':
+    elif direction == "RIGHT":
         dx = 1
     else:
         return False
