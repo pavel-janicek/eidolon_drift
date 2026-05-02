@@ -190,7 +190,15 @@ class Game:
         self.push_message(
             "Distress call received from vessel 'Eidolon'. You answered. Objective: reach the Command Module and use the escape pod."
         )
-        self.push_message("Type 'help' for commands. Use WASD to move.")
+        ih = getattr(self, "input_handler", None)
+        joystick_connected = False
+        if ih is not None:
+            joystick_connected = bool(getattr(ih, "_using_controller", False) or getattr(ih, "_pygame_joystick", None))
+        if joystick_connected:
+            self.push_message("Controller detected. Use face buttons for actions and D-pad/Left Stick for movement.")
+            self.push_message("Action buttons: X=Use, Circle=Inspect, Square=Logs, Triangle=Scan, R2=Help")
+        else:    
+            self.push_message("Type ':help' for commands. Use WASD to move.")
         self.awaiting_quit_confirm = False
         # stav pro escape dialog
         self.awaiting_escape_confirm = False

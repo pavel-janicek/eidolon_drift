@@ -1,4 +1,8 @@
 eidolon-drift (1.2.0) unstable; urgency=medium
+  * Add joystick support
+
+-- Pavel Janíček <pavel.janicek@live.com>  Sat, 2 May 2026 13:27:00 +0200
+
 
 eidolon-drift (1.1.0) unstable; urgency=medium
   * fix a bug where player could go outside playable area
