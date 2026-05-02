@@ -89,8 +89,10 @@ PS4_BUTTON_MAP = {
     "l3": 10,
     "r3": 11,
     "ps": 12,
-    "touch": 13,
+    "touch": 13,    
 }
+
+
 PS4_AXIS_MAP = {
     "left_x": 0,
     "left_y": 1,
@@ -99,6 +101,14 @@ PS4_AXIS_MAP = {
     "l2_axis": 4,
     "r2_axis": 5,
 }
+# mapování tlačítek D‑Pad (upravit indexy podle map-testu)
+PS4_DPAD_BUTTON_MAP = {
+    11: "UP",     # podle tvého výstupu
+    12: "DOWN",   # doplň podle map-testu
+    13: "LEFT",   # doplň podle map-testu
+    14: "RIGHT",  # doplň podle map-testu
+}
+
 
 
 DEFAULT_ACTIONS = {
@@ -327,6 +337,12 @@ class InputHandler:
                     self.logger.debug("InputHandler: axis read failed", exc_info=True)
 
     def _handle_button_down(self, btn_index: int):
+        dir_name = PS4_DPAD_BUTTON_MAP.get(btn_index)
+        if dir_name:
+            # vytvoříme token typu move_dir, který Game.handle_token očekává
+            self._enqueue_event({"type": "move_dir", "dir": dir_name})
+            return
+
         # direct mapping
         for action, spec in self.button_map.items():
             if spec[0] == "button" and spec[1] == btn_index:
