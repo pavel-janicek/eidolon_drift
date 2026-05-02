@@ -209,44 +209,7 @@ class Game:
         except Exception:
             pass
 
-    def _curses_main(self, stdscr):
-        curses.curs_set(0)
-        stdscr.nodelay(False)
-        stdscr.keypad(True)
-        self.stdscr = stdscr
-        self.input_handler = InputHandler(stdscr)
-        self.renderer = OutputRenderer(stdscr, self.map, self.player, self)
-        self.renderer.render()
-
-        while self.running:
-            key = self.input_handler.get_key()
-            if key is None:
-                continue
-
-            if key == "QUIT_REQUEST":
-                self.awaiting_quit_confirm = True
-                self.push_message("Quit game? (y/n)")
-                continue
-
-            if key.startswith("CMD:"):
-                cmd = key[4:]
-                result = cmdmod.handle_command(self, cmd)
-                if result:
-                    self.push_message(result)
-                self.tick(action_type="command")
-            else:
-                moved = move_player(self.map, self.player, key)
-                if moved:
-                    sector = self.map.get_sector(self.player.x, self.player.y)
-                    name = (
-                        sector.name if sector else f"({self.player.x},{self.player.y})"
-                    )
-                    self.push_message(f"Moved to {name}.")
-                else:
-                    self.push_message("Cannot move there.")
-                self.tick(action_type="move")
-
-            self.renderer.render()
+    
 
     def run(self, stdscr=None):
         import time

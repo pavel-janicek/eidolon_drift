@@ -610,9 +610,9 @@ class InputHandler:
                     return self._event_queue.get(block=True, timeout=float(timeout))
                 except queue.Empty:
                     return None
-        except Exception:
-            self.logger.exception("InputHandler: process_once failed")
-            return None
+        except Exception as e:
+            self.logger.exception(f"InputHandler: process_once failed: {e}")
+            return None 
 
 
 # --- CLI helpers for mapping and monitoring -------------------------------
