@@ -205,93 +205,7 @@ class InputHandler:
             # nothing to init here; poll will detect devices
             self.logger.debug("InputHandler: evdev available as fallback")
 
-    def get_key(self, timeout: float = 0.0):
-        """
-        Legacy helper used by Game._curses_main.
-        - If no stdscr available, returns None.
-        - Non-blocking by default (timeout=0.0). If you want blocking, pass None or >0.
-        Returns:
-        - None (no key)
-        - "QUIT_REQUEST" for Ctrl+C
-        - "CMD:<text>" for typed commands (starts with ':' then Enter)
-        - movement tokens: "UP","DOWN","LEFT","RIGHT"
-        - or other legacy strings expected by Game._curses_main
-        """
-        if not getattr(self, "stdscr", None):
-            self.logger.debug("stdscr not found")
-            return None
-
-        # ensure non-blocking read
-        try:
-            self.stdscr.nodelay(True)
-        except Exception:
-            pass
-
-        try:
-            ch = self.stdscr.getch()
-        except Exception:
-            ch = -1
-
-        # restore blocking mode if caller expects blocking (we keep non-blocking)
-        # map keys
-        if ch == -1 or ch is None:
-            return None
-
-        # Ctrl-C (SIGINT) often appears as 3
-        if ch == 3:
-            return "QUIT_REQUEST"
-
-        # arrow keys
-        try:
-            if ch == curses.KEY_UP or ch in (ord("w"), ord("W")):
-                return "UP"
-            if ch == curses.KEY_DOWN or ch in (ord("s"), ord("S")):
-                return "DOWN"
-            if ch == curses.KEY_LEFT or ch in (ord("a"), ord("A")):
-                return "LEFT"
-            if ch == curses.KEY_RIGHT or ch in (ord("d"), ord("D")):
-                return "RIGHT"
-        except Exception:
-            # curses may be None in some envs
-            pass
-
-        # quick command entry: ':' then read line (blocking until Enter)
-        if ch == ord(":"):
-            try:
-                # switch to blocking read for the line
-                self.stdscr.nodelay(False)
-                curses.echo()
-                s = self.stdscr.getstr().decode(errors="ignore").strip()
-                curses.noecho()
-                return "CMD:" + s
-            except Exception:
-                try:
-                    curses.noecho()
-                except Exception:
-                    pass
-            return None
-
-        # single-letter shortcuts mapped to commands (helpful)
-        if ch in (ord("h"), ord("H")):
-            return "CMD:help"
-        if ch in (ord("q"), ord("Q")):
-            return "QUIT_REQUEST"
-        if ch in (ord("x"), ord("X")):
-            return "CMD:use"
-        if ch in (ord("i"), ord("I")):
-            return "CMD:inspect"
-        if ch in (ord("l"), ord("L")):
-            return "CMD:logs"
-        if ch in (ord("c"), ord("C")):
-            return "CMD:scan"
-
-        # fallback: if printable, return as command string (so old code can parse)
-        if 0 <= ch < 256:
-            chs = chr(ch)
-            if chs.isprintable():
-                return "CMD:" + chs
-
-        return None
+    
 
     # --- hotplug callback -------------------------------------------------
     def _hotplug_cb(self, ev_type: str, info: dict):
@@ -378,7 +292,6 @@ class InputHandler:
             except Exception:
                 ly = 0.0
             mx, my = self._axis_to_move(lx, ly)
-            my = -my  # invert Y if controller reports up as -1
             if (mx, my) != self._last_move:
                 self._last_move = (mx, my)
                 self._emit_move(mx, my)
