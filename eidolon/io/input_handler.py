@@ -212,7 +212,7 @@ class InputHandler:
             self._using_controller = True
             self.deadzone = final_map.get("deadzone", DEFAULT_DEADZONE)
             self.invert_y = final_map.get("invert_y", False)
-            self.button_map = final_map.get("buttons", {})
+            self.controller_buttons = final_map.get("buttons", {})
             self.axis_map = final_map.get("axes", {})
             self.dpad_button_map = final_map.get("dpad_buttons", {})
             # convert dpad keys to ints
@@ -247,7 +247,7 @@ class InputHandler:
         - If pygame joystick present, pump events and handle them.
         - Else if evdev backend, poll device list (detection only)
         """
-        self.logger.debug("InputHandler.poll backend=%r pygame_joystick=%r", self.backend, bool(self._pygame_joystick))
+        #self.logger.debug("InputHandler.poll backend=%r pygame_joystick=%r", self.backend, bool(self._pygame_joystick))
 
           # poll curses keyboard first (priority)
         if getattr(self, "stdscr", None):
@@ -328,29 +328,59 @@ class InputHandler:
 
 
     def _handle_button_down(self, btn_index: int):
-        dir_name = self.dpad_button_map.get(btn_index)
-        if dir_name:
-            # vytvoříme token typu move_dir, který Game.handle_token očekává
-            self._enqueue_event({"type": "move_dir", "dir": dir_name})
-            return
+        # 0) debug (dočasně) — vypiš mapy, abys viděl, co máš v paměti
+        self.logger.debug("button_down idx=%r dpad_map=%r action_map_keys=%r controller_buttons=%r",
+                      btn_index,
+                      getattr(self, "dpad_button_map", None),
+                      list(getattr(self, "action_map", {}).keys()),
+                      getattr(self, "controller_buttons", None))
 
-        # direct mapping
-        for action, spec in self.button_map.items():
-            if spec[0] == "button" and spec[1] == btn_index:
-                self._dispatch_action(action)
+        # 1) D‑Pad tlačítka (surová mapa z JSON, klíče jsou int)
+        dmap = getattr(self, "dpad_map", None) or getattr(self, "controller_dpad", None)
+        if dmap and isinstance(dmap, dict):
+            dir_name = dmap.get(btn_index)
+            if dir_name:
+                self._enqueue_event({"type": "move_dir", "dir": dir_name})
                 return
-        # fallback name-based mapping using PS4_BUTTON_MAP inverse
-        inv = {v: k for k, v in self.button_map.items() if isinstance(v, int)}
-        name = inv.get(btn_index)
-        if name:
-            if name == "triangle":
-                self._dispatch_action("scan")
-            elif name == "square":
-                self._dispatch_action("logs")
-            elif name == "x":
-                self._dispatch_action("use")
-            elif name == "circle":
-                self._dispatch_action("inspect")
+
+        # 2) action bindings: očekáváme, že action_map obsahuje spec jako ("button", idx)
+        #    (pokud máš jiný název pro action bindings, použij ho)
+        action_map = getattr(self, "action_map", None) or getattr(self, "button_map", None)
+        if action_map and isinstance(action_map, dict):
+            for action, spec in action_map.items():
+                # defenzivně: spec musí být sekvence a mít typ "button"
+                if not isinstance(spec, (list, tuple)) or len(spec) < 2:
+                    continue
+                if spec[0] == "button" and spec[1] == btn_index:
+                    # dispatchuj akci (např. "use", "inspect", ...)
+                    self._dispatch_action(action)
+                    return
+
+        # 3) fallback: surová controller button map (name -> idx) -> invertovat na idx->name
+        ctrl_buttons = getattr(self, "controller_buttons", None)
+        if isinstance(ctrl_buttons, dict):
+            # ctrl_buttons: {"x":0, "circle":1, ...}
+            inv = {v: k for k, v in ctrl_buttons.items() if isinstance(v, int)}
+            name = inv.get(btn_index)
+            if name:
+                if name == "triangle":
+                    self._dispatch_action("scan")
+                elif name == "square":
+                    self._dispatch_action("logs")
+                elif name == "x":
+                    self._dispatch_action("use")
+                elif name == "circle":
+                    self._dispatch_action("inspect")
+                else:
+                    # obecný fallback: pokud máš defaultní action_map_by_name, použij ji
+                    default_bind = getattr(self, "action_by_button_name", {}).get(name)
+                    if default_bind:
+                        self._dispatch_action(default_bind)
+                return
+
+        # 4) nic neodpovídá
+        self.logger.debug("Unhandled button_down index=%r", btn_index)
+
 
     def _dispatch_action(self, action_key: str):
         action_name = DEFAULT_ACTIONS.get(action_key, action_key)
