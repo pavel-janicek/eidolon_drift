@@ -347,7 +347,7 @@ class Game:
                             self.push_message(result)
                 else:
                     # další akce
-                    logger.debug("Unhandled action token: %s", token)
+                    self.logger.debug("Unhandled action token: %s", token)
                 self.tick(action_type="action")
                 return
 
@@ -396,7 +396,7 @@ class Game:
                     return
 
             # --- fallback -----------------------------------------------------
-            logger.debug("Unknown token received: %r", token)
+            self.logger.debug("Unknown token received: %r", token)
 
     def tick(self, action_type="move"):
         sector = self.map.get_sector(self.player.x, self.player.y)

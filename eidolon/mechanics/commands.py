@@ -169,6 +169,37 @@ def _cmd_inspect(game, raw_target):
       - None if display was handled by renderer (pager),
       - string message otherwise.
     """
+        # --- joystick quick-inspect: pokud není zadán target a je připojen joystick,
+    #     vyber první dict objekt, jinak první string objekt -----------------
+    ih = getattr(game, "input_handler", None)
+    joystick_connected = False
+    if ih is not None:
+        # preferujeme explicitní příznak používání controlleru, fallback na pygame joystick
+        joystick_connected = bool(getattr(ih, "_using_controller", False) or getattr(ih, "_pygame_joystick", None))
+
+    if not raw_target and joystick_connected:
+        # preferuj první dict objekt
+        if dict_objs:
+            obj = dict_objs[0]
+            # reuse logic from numeric index branch for logs and effects
+            if obj.get("type") == "log":
+                if obj.get("fragmented") and not full_flag:
+                    snippet = obj.get("content", "")[:120]
+                    game.push_message(f"{obj.get('title')}: {snippet} ... (fragmented)")
+                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    return None
+                lines = [obj.get("title", "Log"), "-" * 40] + obj.get("content", "").splitlines()
+                if _open_pager_if_possible(lines):
+                    return None
+                return "\n".join(lines)
+            _apply_on_inspect_effect(obj, full_flag=full_flag)
+            return _describe_object_short(obj)
+        # fallback na první string objekt
+        if str_objs:
+            s = str_objs[0]
+            return f"You inspect the {s}. It seems unremarkable."
+        return "Nothing to inspect here."
+
     if not raw_target:
         return "Inspect what?"
 
@@ -418,7 +449,49 @@ def _cmd_decrypt(game, target):
 
 
 def _cmd_use(game, target):
+    
     target_norm = _normalize(target)
+        # --- joystick quick-use: pokud není zadán target a je připojen joystick,
+    #     preferuj první položku v inventáři, jinak první dict objekt v sektoru
+    ih = getattr(game, "input_handler", None)
+    joystick_connected = False
+    if ih is not None:
+        joystick_connected = bool(getattr(ih, "_using_controller", False) or getattr(ih, "_pygame_joystick", None))
+
+    if not target and joystick_connected:
+        # 1) inventory first
+        try:
+            inv = list(getattr(game.player, "inventory", []) or [])
+        except Exception:
+            inv = []
+        if inv:
+            # najdeme první dict položku v inventáři
+            for i, it in enumerate(inv):
+                if isinstance(it, dict):
+                    # znovu použijeme stávající logiku: nastavíme matches tak, aby vybral tuto položku
+                    matches = [("inv", i, it)]
+                    break
+            else:
+                matches = []
+        else:
+            matches = []
+
+        # 2) pokud nic v inventáři, zkus první dict objekt v sektoru
+        if not matches:
+            sector = game.map.get_sector(game.player.x, game.player.y)
+            if sector:
+                for i, o in enumerate(list(getattr(sector, "objects", []) or [])):
+                    if isinstance(o, dict):
+                        matches = [("sec", i, o)]
+                        break
+
+        if not matches:
+            return "No usable object found to use."
+
+        # vyber první match (inventář má prioritu díky pořadí výše)
+        source, idx, obj = matches[0]
+        # pokračujeme níže v původní logice s tímto obj
+
 
     def _matches_obj(obj, target_norm):
         if not isinstance(obj, dict):
