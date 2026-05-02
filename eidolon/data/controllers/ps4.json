@@ -1,0 +1,41 @@
+{
+  "name": "Sony DualShock 4",
+  "aliases": ["PS4 Controller", "Wireless Controller", "DualShock 4"],
+  "platform": ["linux", "windows", "mac"],
+  "notes": "Default mapping used in project; adjust per platform if needed.",
+  "deadzone": 0.08,
+  "invert_y": false,
+  "buttons": {
+    "square": 2,
+    "x": 0,
+    "circle": 1,
+    "triangle": 3,
+    "l1": 9,
+    "r1": 10,
+    "l2": 6,
+    "r2": 7,
+    "share": 8,
+    "options": 9,
+    "l3": 10,
+    "r3": 11,
+    "ps": 12,
+    "touch": 13
+  },
+  "axes": {
+    "left_x": 0,
+    "left_y": 1,
+    "right_x": 2,
+    "right_y": 3,
+    "l2_axis": 4,
+    "r2_axis": 5
+  },
+  "dpad_buttons": {
+    "11": "UP",
+    "12": "DOWN",
+    "13": "LEFT",
+    "14": "RIGHT"
+  },
+  "hints": {
+    "notes": "If your platform reports different axis indices, create platform-specific override file."
+  }
+}

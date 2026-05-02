@@ -12,11 +12,15 @@ Features:
 """
 
 from __future__ import annotations
+from email.policy import default
 import logging
 import threading
 import time
 import queue
+import os
 from typing import Callable, Dict, List, Optional, Tuple
+
+from eidolon.io.controller_map import CONTROLLERS_DIR, find_controller_map_by_name, _load_json_file, merge_with_defaults
 
 
 logger = logging.getLogger("eidolon.input")
@@ -75,39 +79,6 @@ DEFAULT_POLL_INTERVAL = 0.01  # seconds for main loop poll
 HOTPLUG_POLL = 1.0  # seconds for detect_input monitor
 
 # PS4 mapping defaults (may vary by platform/driver)
-PS4_BUTTON_MAP = {
-    "square": 2,
-    "x": 0,
-    "circle": 1,
-    "triangle": 3,
-    "l1": 9,
-    "r1": 10,
-    "l2": 6,
-    "r2": 7,
-    "share": 8,
-    "options": 9,
-    "l3": 10,
-    "r3": 11,
-    "ps": 12,
-    "touch": 13,    
-}
-
-
-PS4_AXIS_MAP = {
-    "left_x": 0,
-    "left_y": 1,
-    "right_x": 2,   # uprav podle map-testu pokud je potřeba
-    "right_y": 3,   # uprav podle map-testu pokud je potřeba
-    "l2_axis": 4,
-    "r2_axis": 5,
-}
-# mapování tlačítek D‑Pad (upravit indexy podle map-testu)
-PS4_DPAD_BUTTON_MAP = {
-    11: "UP",     # podle tvého výstupu
-    12: "DOWN",   # doplň podle map-testu
-    13: "LEFT",   # doplň podle map-testu
-    14: "RIGHT",  # doplň podle map-testu
-}
 
 
 
@@ -174,14 +145,6 @@ class InputHandler:
         self._hotplug_thread = None
         self._event_queue: "queue.Queue[dict]" = queue.Queue()
 
-        # mapping: action -> ("button", index) or ("axis_pos", axis_index, threshold)
-        self.button_map = {
-            "scan": ("button", PS4_BUTTON_MAP.get("triangle")),
-            "logs": ("button", PS4_BUTTON_MAP.get("square")),
-            "use": ("button", PS4_BUTTON_MAP.get("x")),
-            "inspect": ("button", PS4_BUTTON_MAP.get("circle")),
-            "help": ("axis_pos", PS4_AXIS_MAP.get("r2_axis"), 0.5),
-        }
 
         # try to start hotplug monitoring (detect_input may raise)
         try:
@@ -242,8 +205,19 @@ class InputHandler:
                 return
             j = _PYGAME.joystick.Joystick(0)
             j.init()
+            map_data = find_controller_map_by_name(j.get_name())
+            default_map = _load_json_file(os.path.join(CONTROLLERS_DIR, "default.json")) or {}
+            final_map = merge_with_defaults(map_data, default_map)
             self._pygame_joystick = j
             self._using_controller = True
+            self.deadzone = final_map.get("deadzone", DEFAULT_DEADZONE)
+            self.invert_y = final_map.get("invert_y", False)
+            self.button_map = final_map.get("buttons", {})
+            self.axis_map = final_map.get("axes", {})
+            self.dpad_button_map = final_map.get("dpad_buttons", {})
+            # convert dpad keys to ints
+            dpad = final_map.get("dpad_buttons", {})
+            self.dpad_map = {int(k): v for k, v in dpad.items()} if dpad else {}
             self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
         except Exception:
             self.logger.exception("InputHandler: failed to init pygame joystick")
@@ -258,6 +232,13 @@ class InputHandler:
 
     def _axis_to_move(self, ax: float, ay: float) -> Tuple[float, float]:
         return (self._apply_deadzone(ax), self._apply_deadzone(ay))
+    
+    def _get_axis_index(self, key, default=0):
+        try:
+            return int(self.axis_map.get(key, default))
+        except Exception:
+            return default        
+                
 
     # --- public poll (call each frame) ------------------------------------
     def poll(self):
@@ -291,8 +272,8 @@ class InputHandler:
 
         if ev.type == _PYGAME.JOYAXISMOTION:
             # read left stick axes by configured indices
-            lx_idx = PS4_AXIS_MAP.get("left_x", 0)
-            ly_idx = PS4_AXIS_MAP.get("left_y", 1)
+            lx_idx = self._get_axis_index("left_x", 0)
+            ly_idx = self._get_axis_index("left_y", 1)
             try:
                 lx = self._pygame_joystick.get_axis(lx_idx)
             except Exception:
@@ -319,25 +300,35 @@ class InputHandler:
             self._using_controller = False
 
     def _check_axis_actions(self):
-        # check axis-based mappings (e.g., triggers)
-        for action, spec in self.button_map.items():
+    # check axis-based mappings (e.g., triggers)
+        for action, spec in list(self.button_map.items()):
+            # defensive: spec must be a sequence and have at least one element
+            if not isinstance(spec, (list, tuple)):
+                # skip plain integer mappings (these are controller index maps, not action specs)
+                continue
+            if len(spec) == 0:
+                continue
             if spec[0] == "axis_pos":
-                _, axis_idx, threshold = spec
+                # unpack safely
+                try:
+                    _, axis_idx, threshold = spec
+                except Exception:
+                    continue
                 if axis_idx is None:
                     continue
                 try:
                     val = self._pygame_joystick.get_axis(axis_idx)
                     if val is None:
                         continue
-                    # normalize from [-1..1] to [0..1] if needed
-                    norm = (val + 1.0) / 2.0  # -1 -> 0, 1 -> 1
+                    norm = (val + 1.0) / 2.0
                     if norm > (threshold if threshold is not None else 0.5):
                         self._dispatch_action(action)
                 except Exception:
                     self.logger.debug("InputHandler: axis read failed", exc_info=True)
 
+
     def _handle_button_down(self, btn_index: int):
-        dir_name = PS4_DPAD_BUTTON_MAP.get(btn_index)
+        dir_name = self.dpad_button_map.get(btn_index)
         if dir_name:
             # vytvoříme token typu move_dir, který Game.handle_token očekává
             self._enqueue_event({"type": "move_dir", "dir": dir_name})
@@ -349,7 +340,7 @@ class InputHandler:
                 self._dispatch_action(action)
                 return
         # fallback name-based mapping using PS4_BUTTON_MAP inverse
-        inv = {v: k for k, v in PS4_BUTTON_MAP.items() if isinstance(v, int)}
+        inv = {v: k for k, v in self.button_map.items() if isinstance(v, int)}
         name = inv.get(btn_index)
         if name:
             if name == "triangle":
