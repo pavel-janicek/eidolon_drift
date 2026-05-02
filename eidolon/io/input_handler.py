@@ -218,6 +218,16 @@ class InputHandler:
             # convert dpad keys to ints
             dpad = final_map.get("dpad_buttons", {})
             self.dpad_map = {int(k): v for k, v in dpad.items()} if dpad else {}
+            self.action_by_button_name = final_map.get("action_by_button_name", {}) or {}
+            if not getattr(self, "action_map", None):
+                cb = self.controller_buttons
+                self.action_map = {
+                    "use": ("button", cb.get("x", 0)),
+                    "inspect": ("button", cb.get("circle", 1)),
+                    "logs": ("button", cb.get("square", 2)),
+                    "scan": ("button", cb.get("triangle", 3)),
+                    "help": ("button", cb.get("r2", 7))
+                    }
             self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
         except Exception:
             self.logger.exception("InputHandler: failed to init pygame joystick")
@@ -345,7 +355,7 @@ class InputHandler:
 
         # 2) action bindings: očekáváme, že action_map obsahuje spec jako ("button", idx)
         #    (pokud máš jiný název pro action bindings, použij ho)
-        action_map = getattr(self, "action_map", None) or getattr(self, "button_map", None)
+        action_map = getattr(self, "action_map", None)
         if action_map and isinstance(action_map, dict):
             for action, spec in action_map.items():
                 # defenzivně: spec musí být sekvence a mít typ "button"

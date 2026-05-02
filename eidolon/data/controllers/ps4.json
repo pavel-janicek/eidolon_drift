@@ -35,7 +35,28 @@
     "13": "LEFT",
     "14": "RIGHT"
   },
+  "action_by_button_name": {
+    "x": "use",
+    "circle": "inspect",
+    "square": "logs",
+    "triangle": "scan",
+    "r2": "help"
+  },
   "hints": {
-    "notes": "If your platform reports different axis indices, create platform-specific override file."
+    "notes": "If your platform reports different axis indices, create platform-specific override file.",
+    "defauult action mapping": {
+        "move_up": "dpad_up",
+        "move_down": "dpad_down",
+        "move_left": "dpad_left",
+        "move_right": "dpad_right",
+        "left_stick_up": "UP",
+        "left_stick_down": "DOWN",
+        "left_stick_left": "LEFT",
+        "left_stick_right": "RIGHT",
+        "use": "x",
+        "inspect": "circle",
+        "logs": "square",
+        "scan": "triangle"
+    }
   }
 }
