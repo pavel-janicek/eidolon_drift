@@ -10,16 +10,10 @@
     "x": 0,
     "circle": 1,
     "triangle": 3,
-    "l1": 9,
-    "r1": 10,
-    "l2": 6,
-    "r2": 7,
-    "share": 8,
-    "options": 9,
-    "l3": 10,
-    "r3": 11,
-    "ps": 12,
-    "touch": 13
+    "share": 4,
+    "options": 6,
+    "ps": 5,
+    "touch": 15
   },
   "axes": {
     "left_x": 0,
@@ -40,7 +34,7 @@
     "circle": "inspect",
     "square": "logs",
     "triangle": "scan",
-    "r2": "help"
+    "r2_axis": "help"
   },
   "hints": {
     "notes": "If your platform reports different axis indices, create platform-specific override file.",
