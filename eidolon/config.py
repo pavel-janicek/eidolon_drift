@@ -11,7 +11,7 @@ HEALTH_RED_THRESHOLD = 0.25
 # nové volitelné výchozí hodnoty pro generátor
 DEFAULT_BASE_DENSITY = 0.05  # doporučené rozmezí 0.03..0.12
 DEFAULT_MIN_DISTANCE = 3  # doporučené rozmezí 2..6
-GAME_VERSION = "1.2.0"
+GAME_VERSION = "1.3.0"
 
 SECTOR_TYPE_WEIGHTS = {
     "BRIDGE": 0.008,
