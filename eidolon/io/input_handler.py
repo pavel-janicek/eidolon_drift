@@ -584,7 +584,6 @@ class InputHandler:
         """
         try:
             # neblokující put (fronta je neomezená, ale pro jistotu)
-            self.logger.debug(f"Enqueueing event: {token}")
             self._event_queue.put_nowait(token)
         except Exception:
             self.logger.exception("InputHandler: failed to enqueue event")

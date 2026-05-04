@@ -201,8 +201,7 @@ class Game:
             self.push_message("Action buttons: X=Use, Circle=Inspect, Square=Logs, Triangle=Scan, R2=Help")
         else:    
             self.push_message("Type ':help' for commands. Use WASD to move.")
-        # stav pro escape dialog
-        self.awaiting_escape_confirm = False
+        
 
     def push_message(self, text):
         if not hasattr(self, "messages"):
@@ -239,14 +238,14 @@ class Game:
 
             while (self.gameState == GameState.RUNNING):
 
-                # quit confirm modal
                 if (self.gameState == GameState.CONFIRM):
                     self._handle_quit_confirm()
                     continue
-
-                if self.awaiting_escape_confirm:
+                    
+                elif (self.gameState == GameState.ESCAPE):
                     self._handle_escape_confirm()
                     continue
+
 
                 # render
                 if self.renderer:
@@ -718,27 +717,26 @@ class Game:
             except Exception as e:
                 # pokud getch selže, ukončí hru
                 self.push_message(f"Exiting game. {e}")
-                self.running = False
+                self.gameState = GameState.QUIT
                 return
 
             # Enter nebo Return
             if ch in (10, 13):
-                self.running = False
+                self.gameState = GameState.QUIT
                 return
             # také akceptuj libovolnou jinou klávesu jako potvrzení
             if ch != -1:
-                self.running = False
+                self.gameState = GameState.QUIT
             return
 
     def _handle_escape_confirm(self):
         """
-        Spustí escape dialog pokud je awaiting_escape_confirm True.
+        Spustí escape dialog pokud je gameState ESCAPE.
         Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
         """
-        if not getattr(self, "awaiting_escape_confirm", False):
-            # pokud není nastaven, nic nedělej (command nastaví flag)
-            self.awaiting_escape_confirm = True
-            return
+        self.logger.debug("escape function called")
+        if not (self.gameState == GameState.ESCAPE):
+            self.gameState = GameState.ESCAPE
 
         try:
             # zavolat dialog (blokující)
@@ -751,6 +749,6 @@ class Game:
                 pass
         finally:
             # vždy vyčistit flag, aby run() pokračovalo normálně
-            self.awaiting_escape_confirm = False
+            self.gameState = GameState.RUNNING
 
             

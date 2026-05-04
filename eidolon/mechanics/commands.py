@@ -607,7 +607,8 @@ def _cmd_use(game, target):
         or obj.get("id") == "escape-pod"
     ):
         # only set flag here; do NOT call dialog directly
-        game.awaiting_escape_confirm = True
+        game.gameState = GameState.ESCAPE
+        game._handle_escape_confirm()
         return None
 
     # fallback: no actionable on_use, but object matches target

@@ -2,6 +2,7 @@
 import random
 import json
 import sys
+import logging
 from pathlib import Path
 from eidolon.world.map import Map
 from eidolon.world.sector import Sector
@@ -12,6 +13,7 @@ from eidolon.config import (
     DEFAULT_BASE_DENSITY,
     DEFAULT_MIN_DISTANCE,
     SECTOR_TYPE_WEIGHTS,
+    LOG_LEVEL
 )
 from eidolon.generation.log_loader import load_logs
 
@@ -99,6 +101,8 @@ class MapGenerator:
     def __init__(
         self, width=None, height=None, seed=None, base_density=None, min_distance=None
     ):
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(filename="eidolon.log", encoding="utf-8", level=LOG_LEVEL)
         self.width = int(width) if width is not None else int(MIN_MAP_WIDTH)
         self.height = int(height) if height is not None else int(MIN_MAP_HEIGHT)
         if self.width < MIN_MAP_WIDTH:
@@ -389,6 +393,7 @@ class MapGenerator:
                     "on_use": {"action": "escape"},
                 }
             )
+            self.logger.debug(f"Escape pod placed at {ex_x}, {ex_y}")
 
         # debug summary of placed objects
         total = 0
