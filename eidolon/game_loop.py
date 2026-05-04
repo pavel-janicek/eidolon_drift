@@ -749,6 +749,7 @@ class Game:
                 pass
         finally:
             # vždy vyčistit flag, aby run() pokračovalo normálně
-            self.gameState = GameState.RUNNING
+            self.logger.debug("escape dialog finished, resetting gameState to RUNNING")
+            self.gameState = GameState.QUIT
 
             

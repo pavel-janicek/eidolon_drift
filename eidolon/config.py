@@ -1,7 +1,7 @@
 # eidolon/config.py
 import logging
 
-SEED = 2  # set to int for reproducible runs
+SEED = None  # set to int for reproducible runs
 MIN_MAP_WIDTH = 10
 MIN_MAP_HEIGHT = 5
 DEFAULT_THEME = "dark"  # available: "dark", "retro", "high_contrast"
@@ -23,4 +23,4 @@ SECTOR_TYPE_WEIGHTS = {
     "EMPTY": 0.948,
 }
 
-LOG_LEVEL = logging.DEBUG  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL = logging.INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
