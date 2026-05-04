@@ -6,6 +6,7 @@ Handlers may modify game state and should return a short text result (string).
 """
 
 import random
+from eidolon.mechanics.game_state import GameState
 
 
 def handle_command(game, raw_cmd: str) -> str:
@@ -18,7 +19,7 @@ def handle_command(game, raw_cmd: str) -> str:
     args = parts[1:]
 
     if verb in ("quit", "exit"):
-        game.awaiting_quit_confirm = True
+        game.gameState = GameState.CONFIRM
         game._handle_quit_confirm()
         return "Quit game? (y/n)"
 

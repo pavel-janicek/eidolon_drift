@@ -76,6 +76,7 @@ from eidolon.mechanics.movement import move_player
 from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
+from eidolon.mechanics.game_state import GameState
 from eidolon.config import LOG_LEVEL
 
 
@@ -152,6 +153,7 @@ class Game:
         self.input_handler = InputHandler(stdscr)
         self.renderer = None
         self.running = True
+        self.gameState = GameState.RUNNING
 
         # messages buffer and debug push helper
         self.messages = []
@@ -199,7 +201,6 @@ class Game:
             self.push_message("Action buttons: X=Use, Circle=Inspect, Square=Logs, Triangle=Scan, R2=Help")
         else:    
             self.push_message("Type ':help' for commands. Use WASD to move.")
-        self.awaiting_quit_confirm = False
         # stav pro escape dialog
         self.awaiting_escape_confirm = False
 
@@ -236,10 +237,10 @@ class Game:
                 except Exception as e:
                     self.push_message(f"[debug] initial renderer.render() failed: {e}")
 
-            while self.running:
+            while (self.gameState == GameState.RUNNING):
 
                 # quit confirm modal
-                if self.awaiting_quit_confirm:
+                if (self.gameState == GameState.CONFIRM):
                     self._handle_quit_confirm()
                     continue
 
@@ -262,7 +263,7 @@ class Game:
                     token = None
 
                 if token == "QUIT_REQUEST":
-                    self.awaiting_quit_confirm = True
+                    self.gameState = GameState.CONFIRM
                     self.push_message("Quit game? (y/n)")
                     continue
 
@@ -276,7 +277,7 @@ class Game:
                 time.sleep(0.02)
 
         except KeyboardInterrupt:
-            self.awaiting_quit_confirm = True
+            self.gameState = GameState.CONFIRM
             self.run()
         except Exception as e:
             self.push_message(f"[debug] Game.run error: {e}")
@@ -399,7 +400,7 @@ class Game:
                 key = token.get("key")
                 if key == "SIGINT" or key == "QUIT":
                     # zachovej původní chování pro Ctrl+C
-                    self.awaiting_quit_confirm = True
+                    self.gameState = GameState.CONFIRM
                     self._handle_quit_confirm()
                     return
 
@@ -608,27 +609,10 @@ class Game:
         print(f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
         self.ambient_messages = []
 
-    def debug_emit_ambient(self):
-        if not getattr(self, "ambient_messages", None):
-            import sys
-
-            print("[debug] no ambient messages loaded", file=sys.stderr)
-            return
-        # choose using game RNG for reproducibility
-        msg = (
-            self.rng.choice(self.ambient_messages)
-            if getattr(self, "rng", None)
-            else self.ambient_messages[0]
-        )
-        # debug print to stderr and push to in‑game messages
-        import sys
-
-        print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
-        self.push_message(msg)
 
     def _handle_quit_confirm(self):
-        if not self.awaiting_quit_confirm:
-            self.awaiting_quit_confirm = True
+        if not (self.gameState == GameState.CONFIRM):
+            self.gameState = GameState.CONFIRM
         self._show_quit_dialog()
 
     def _show_quit_dialog(self):
@@ -655,11 +639,11 @@ class Game:
         while True:
             ch = self.stdscr.getch()
             if ch in (ord("y"), ord("Y")):
-                self.running = False
+                self.gameState = GameState.QUIT
                 return
             if ch in (ord("n"), ord("N")):
-                self.awaiting_quit_confirm = False
-            return
+                self.gameState = GameState.RUNNING
+                return
 
     def _show_escape_dialog(self):
         """
@@ -768,3 +752,5 @@ class Game:
         finally:
             # vždy vyčistit flag, aby run() pokračovalo normálně
             self.awaiting_escape_confirm = False
+
+            

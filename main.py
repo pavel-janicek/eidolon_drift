@@ -288,10 +288,8 @@ def _run(stdscr):
     try:
         if "stdscr" in Game.run.__code__.co_varnames:
             game.run(stdscr=stdscr)
-            game.debug_emit_ambient()
         else:
             game.run()
-            game.debug_emit_ambient()
     except Exception as exc:
         _safe_write_crash(exc)
         try:
