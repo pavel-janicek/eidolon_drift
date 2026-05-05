@@ -277,9 +277,9 @@ class Game:
 
         except KeyboardInterrupt:
             self.gameState = GameState.CONFIRM
-            self.run()
+            self._handle_quit_confirm()
         except Exception as e:
-            self.push_message(f"[debug] Game.run error: {e}")
+            self.logger.exception(f"Game.run error: {e}")
 
     def handle_token(self, token):
         # token může být None nebo dict
@@ -642,6 +642,7 @@ class Game:
                 return
             if ch in (ord("n"), ord("N")):
                 self.gameState = GameState.RUNNING
+                self.run(self.stdscr)
                 return
 
     def _show_escape_dialog(self):
