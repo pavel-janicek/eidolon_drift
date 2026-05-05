@@ -501,11 +501,10 @@ class Game:
             return f"Command error: {e}"
 
     def handle_death(self, reason="You died."):
-        self.push_message(reason)
-        self.push_message("You have died. Game over.")
-        if self.renderer:
-            self.renderer.render()
-        self.running = False
+        if not (self.gameState == GameState.DEATH):
+            self.gameState = GameState.DEATH
+
+        self._show_death_dialog()            
 
     # in Game class
     def tick_spawn_ambient(self):
@@ -667,7 +666,7 @@ class Game:
             except Exception:
                 pass
             # ukončí hru
-            self.running = False
+            self.gameState = GameState.QUIT
             return
 
         dialog_w = min(60, w - 4)
@@ -729,6 +728,83 @@ class Game:
             if ch != -1:
                 self.gameState = GameState.QUIT
             return
+        
+    def _show_death_dialog(self):
+        """
+        Jednoduchý modální dialog po použití escape podu.
+        Zobrazí final stats a [Ok]. Po Enter / libovolné klávese ukončí hru.
+        """
+        try:
+            h, w = self.stdscr.getmaxyx()
+        except Exception:
+            # fallback: textové zprávy pokud není stdscr
+            try:
+                self.push_message(
+                    "You habe died. Game over."
+                )
+            except Exception:
+                pass
+            # ukončí hru
+            self.gameState = GameState.QUIT
+            return
+
+        dialog_w = min(60, w - 4)
+        dialog_h = 7
+        x0 = (w - dialog_w) // 2
+        y0 = (h - dialog_h) // 2
+
+        win = curses.newwin(dialog_h, dialog_w, y0, x0)
+        try:
+            win.keypad(True)
+        except Exception:
+            pass
+        win.border()
+
+        title = " Game Over "
+        try:
+            win.addstr(0, max(1, (dialog_w - len(title)) // 2), title, curses.A_BOLD)
+        except Exception:
+            pass
+
+        lines = [
+            "You have died. Game over.",
+            "",
+            "",
+            "[ Ok ]  Press Enter to exit",
+        ]
+
+        for i, line in enumerate(lines, start=1):
+            try:
+                pad = max(0, (dialog_w - 2 - len(line)) // 2)
+                win.addstr(i, 1 + pad, line[: dialog_w - 2])
+            except Exception:
+                pass
+
+        win.refresh()
+
+        # blokující smyčka: čekej na Enter nebo libovolnou klávesu
+        while True:
+            try:
+                # čteme přímo z dialogového okna, ne ze stdscr
+                ch = win.getch()
+            except KeyboardInterrupt:
+                # ignoruj opakované Ctrl+C během dialogu
+                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                continue
+            except Exception as e:
+                # pokud getch selže, ukončí hru
+                self.push_message(f"Exiting game. {e}")
+                self.gameState = GameState.QUIT
+                return
+
+            # Enter nebo Return
+            if ch in (10, 13):
+                self.gameState = GameState.QUIT
+                return
+            # také akceptuj libovolnou jinou klávesu jako potvrzení
+            if ch != -1:
+                self.gameState = GameState.QUIT
+            return    
 
     def _handle_escape_confirm(self):
         """
