@@ -116,12 +116,12 @@ class MapGenerator:
             # system entropy seed for true randomness
             sys_seed = random.SystemRandom().randint(0, 2**30)
             self.rng = random.Random(sys_seed)
-            print(
-                f"[mapgen][debug] using system-random seed={sys_seed}", file=sys.stderr
+            self.logger.debug(
+                f"[mapgen][debug] using system-random seed={sys_seed}"
             )
         else:
             self.rng = random.Random(int(use_seed))
-            print(f"[mapgen][debug] using seed={int(use_seed)}", file=sys.stderr)
+            self.logger.debug(f"[mapgen][debug] using seed={int(use_seed)}")
 
         self.base_density = (
             float(base_density)
@@ -142,13 +142,11 @@ class MapGenerator:
             if self.data_dir
             else Path("data/objects/objects.json")
         )
-        print(
-            f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}",
-            file=sys.stderr,
+        self.logger.debug(
+            f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}"
         )
-        print(
-            f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json",
-            file=sys.stderr,
+        self.logger.debug(
+            f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json"
         )
 
         self.sector_types = self.config.get(
@@ -160,6 +158,12 @@ class MapGenerator:
             for t in self.templates
             if isinstance(t, dict) and t.get("kind") == "environment"
         }
+        self.templates_by_id = {
+            t["id"]: t
+            for t in self.templates
+            if isinstance(t, dict) and "id" in t
+        }
+
 
     # --- helper methods for region placement ---------------------------------
     def _rects_overlap(self, a, b, gap=0):
@@ -494,7 +498,7 @@ class MapGenerator:
                 )
                 continue
 
-    def _place_special_modules(self):
+    def _place_special_modules(self, grid):
         special = [
             ("module_captain_override", "BRIDGE"),
             ("module_engineering_stabilizer", "ENGINEERING"),
@@ -502,7 +506,7 @@ class MapGenerator:
         ]
 
         for module_id, sector_type in special:
-            sector = self._find_sector_by_type(sector_type)
+            sector = self._find_sector_by_type(sector_type, grid=grid)
             if not sector:
                 self.logger.warning(f"[mapgen] WARNING: No sector of type {sector_type} found!")
                 continue
@@ -518,11 +522,11 @@ class MapGenerator:
 
             self.logger.debug(f"[mapgen] placed {module_id} at ({sector.x},{sector.y}) in sector {sector.type}")
 
-    def _find_sector_by_type(self, t):
-        for row in self.map:
-            for sector in row:
-                if sector.type == t:
-                    return sector
+    def _find_sector_by_type(self, t, grid=None):
+        grid = grid or self.current_grid
+        for sector in grid.values():
+            if sector.type == t:
+                return sector
         return None
         
         
