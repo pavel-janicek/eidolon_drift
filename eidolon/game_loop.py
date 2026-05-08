@@ -81,7 +81,7 @@ from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
 from eidolon.mechanics.game_state import GameState
-from eidolon.config import LOG_LEVEL, TICKS_TO_SCAN
+from eidolon.config import FRAME_TIME, LOG_LEVEL, TICKS_TO_SCAN, FRAME_TIME
 
 
 class Game:
@@ -222,6 +222,13 @@ class Game:
         except Exception:
             pass
 
+    def frame_limiter(self):
+        self._last_frame = getattr(self, "_last_frame", 0)
+        now = time.time()
+        if now - self._last_frame < FRAME_TIME:
+            time.sleep(FRAME_TIME - (now - self._last_frame))
+        self._last_frame = now    
+
     
     def run(self, stdscr=None):
        
@@ -233,6 +240,9 @@ class Game:
 
         try:
             while True:
+
+                # --- FRAME LIMITER ---
+                self.frame_limiter()
 
                 # ----------------------------------------------------
                 # 1) RENDER
@@ -281,7 +291,7 @@ class Game:
                         self.gameState = GameState.INTERACT
                         self.popup.open_interact(self._build_interact_options(sector))
                     # scanning ignores input
-                    time.sleep(0.02)
+                    self.frame_limiter()
                     continue
 
                 # INTERACT / CONFIRM
@@ -293,7 +303,7 @@ class Game:
                     if pop_result:
                         self.logger.debug("Popup result: %s", pop_result)
                         self._process_popup_result(pop_result)
-                    time.sleep(0.02)
+                    self.frame_limiter()
                     continue
 
 
@@ -308,7 +318,7 @@ class Game:
                         self.handle_token(token)
 
                     self.tick()
-                    time.sleep(0.02)
+                    self.frame_limiter()
 
         except KeyboardInterrupt:
             self.gameState = GameState.QUIT_CONFIRM

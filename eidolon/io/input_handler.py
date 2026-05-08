@@ -230,6 +230,12 @@ class InputHandler:
             self.action_map = final_map.get("action_map", {})
 
             self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
+            _PYGAME.event.set_blocked(None)
+            _PYGAME.event.set_allowed([
+                _PYGAME.JOYAXISMOTION,
+                _PYGAME.JOYBUTTONDOWN,
+                _PYGAME.JOYBUTTONUP
+            ])
         except Exception:
             self.logger.exception("InputHandler: failed to init pygame joystick")
 
