@@ -395,6 +395,8 @@ class MapGenerator:
             )
             self.logger.debug(f"Escape pod placed at {ex_x}, {ex_y}")
 
+        self._place_special_modules(grid)    
+
         # debug summary of placed objects
         total = 0
         per_type = {}
@@ -449,12 +451,6 @@ class MapGenerator:
         return choices
 
     def _populate_objects(self, sector):
-        # --- DEBUG: log placement of special modules ---
-        special_ids = {
-            "module_captain_override",
-            "module_engineering_stabilizer",
-            "module_biometric_seal"
-        }
         choices = self._choose_templates_for_sector(sector.type)
         if not choices:
             return
@@ -481,11 +477,6 @@ class MapGenerator:
                         sector.objects = []
                     sector.objects.append(obj)
 
-                    obj_id = obj.get("id") if isinstance(obj, dict) else None
-                    if obj_id in special_ids:
-                        self.logger.debug(
-                            f"Placed special module '{obj_id}' in sector {sector.name} ({sector.x},{sector.y})"
-                        )
 
                     if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
                         event_id = tpl.get("linger_event", tpl.get("id"))
@@ -502,6 +493,39 @@ class MapGenerator:
                     file=sys.stderr,
                 )
                 continue
+
+    def _place_special_modules(self):
+        special = [
+            ("module_captain_override", "BRIDGE"),
+            ("module_engineering_stabilizer", "ENGINEERING"),
+            ("module_biometric_seal", "MEDBAY")
+        ]
+
+        for module_id, sector_type in special:
+            sector = self._find_sector_by_type(sector_type)
+            if not sector:
+                self.logger.warning(f"[mapgen] WARNING: No sector of type {sector_type} found!")
+                continue
+
+        # vytvořit objekt z template
+            tpl = self.templates_by_id.get(module_id)
+            if not tpl:
+                self.logger.error(f"[mapgen] ERROR: Template {module_id} not found!")
+                continue
+
+            obj = self._instantiate_from_template(tpl, sector)
+            sector.objects.append(obj)
+
+            self.logger.debug(f"[mapgen] placed {module_id} at ({sector.x},{sector.y}) in sector {sector.type}")
+
+    def _find_sector_by_type(self, t):
+        for row in self.map:
+            for sector in row:
+                if sector.type == t:
+                    return sector
+        return None
+        
+        
 
     def _instantiate_from_template(self, tpl, sector):
         obj = dict(tpl) if isinstance(tpl, dict) else {"name": str(tpl)}
