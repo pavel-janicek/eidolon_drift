@@ -203,9 +203,9 @@ class Game:
             joystick_connected = bool(getattr(ih, "_using_controller", False) or getattr(ih, "_pygame_joystick", None))
         if joystick_connected:
             self.push_message("Controller detected. Use face buttons for actions and D-pad/Left Stick for movement.")
-            self.push_message("Action buttons: X=Use, Circle=Inspect, Square=Logs, Triangle=Scan, R2=Help")
+            self.push_message("Action buttons: X=Primary, Circle=Secondary")
         else:    
-            self.push_message("Type ':help' for commands. Use WASD to move.")
+            self.push_message("Type ':help' or '?' for commands. Use WASD to move.")
         
 
     def push_message(self, text):
