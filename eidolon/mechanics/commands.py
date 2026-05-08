@@ -618,6 +618,21 @@ def _cmd_use(game, target):
             return f"You use the {obj.get('title','item')}. Sanity +{amt}."
         else:
             return f"You use the {obj.get('title','item')}. A chill runs down your spine. Sanity {amt}."
+        
+        # FLAG action (generic key/value override)
+    if action == "flag":
+        flag_name = on_use.get("flag")
+        flag_value = on_use.get("value", True)
+
+        # nastav flag do game objektu
+        try:
+            setattr(game, flag_name, flag_value)
+        except Exception:
+            pass
+
+        # modul se nespotřebovává (ale můžeš změnit)
+        return f"You activate the {obj.get('title','module')}. Flag '{flag_name}' set to {flag_value}."
+    
 
     # ESCAPE action
     if (

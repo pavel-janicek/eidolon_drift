@@ -853,26 +853,39 @@ class Game:
 
     def _handle_escape_confirm(self):
         """
-        Spustí escape dialog pokud je gameState ESCAPE.
-        Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
+        Spustí escape dialog pokud jsou splněny všechny podmínky.
+        Po návratu nastaví QUIT pouze pokud dialog skutečně proběhl.
         """
         self.logger.debug("escape function called")
-        if not (self.gameState == GameState.ESCAPE):
-            self.gameState = GameState.ESCAPE
+
+        # --- kontrola modulů ---
+        if not getattr(self, "override_captain", False):
+            self.push_message("You cannot escape without the Captain's override code.")
+            self.gameState = GameState.RUNNING
+            return
+
+        if not getattr(self, "override_stabilizer", False):
+            self.push_message("Escape pod locked: Engineering Stabilizer missing.")
+            self.gameState = GameState.RUNNING
+            return
+
+        if not getattr(self, "override_biometric", False):
+            self.push_message("Escape pod locked: Biometric Seal from medbay missing.")
+            self.gameState = GameState.RUNNING
+            return
+
+        # --- všechny podmínky splněny → spustíme dialog ---
+        self.gameState = GameState.ESCAPE
 
         try:
-            # zavolat dialog (blokující)
-            self._show_escape_dialog()
+            self._show_escape_dialog()   # blokující
         except KeyboardInterrupt:
-            # ignoruj opakované Ctrl+C během dialogu
-            try:
-                self.logger.debug("[debug] escape dialog interrupted by Ctrl+C")
-            except Exception:
-                pass
+            self.logger.debug("[debug] escape dialog interrupted by Ctrl+C")
         finally:
-            # vždy vyčistit flag, aby run() pokračovalo normálně
+            # escape dialog proběhl → ukončíme hru
             self.logger.debug("escape dialog finished, resetting gameState to QUIT")
             self.gameState = GameState.QUIT
+
 
     def _build_interact_options(self, sector):
         options = []
