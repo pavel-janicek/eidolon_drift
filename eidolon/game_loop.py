@@ -263,7 +263,7 @@ class Game:
                 # ----------------------------------------------------
 
                 # QUIT
-                if self.gameState == GameState.CONFIRM:
+                if self.gameState == GameState.QUIT_CONFIRM:
                     self._handle_quit_confirm()
                     break
                 if self.gameState == GameState.ESCAPE:
@@ -285,6 +285,7 @@ class Game:
 
                 # INTERACT / CONFIRM
                 if self.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                    pop_result = None
                     if token and token.get("type") == "action":
                         action = token["name"]
                         pop_result = self.popup.handle_input(action)
@@ -297,7 +298,7 @@ class Game:
                 # RUNNING
                 if self.gameState == GameState.RUNNING:
                     if token == "QUIT_REQUEST":
-                        self.gameState = GameState.CONFIRM
+                        self.gameState = GameState.QUIT_CONFIRM
                         self._handle_quit_confirm()
                         continue
 
@@ -308,7 +309,7 @@ class Game:
                     time.sleep(0.02)
 
         except KeyboardInterrupt:
-            self.gameState = GameState.CONFIRM
+            self.gameState = GameState.QUIT_CONFIRM
             self._handle_quit_confirm()
 
 
@@ -389,7 +390,7 @@ class Game:
                     self.logger.debug("Opening interact menu for sector at (%d, %d)", self.player.x, self.player.y)
                     if not sector.scanned:
                         self.gameState = GameState.SCANNING
-                        self.popup.open_scanning(20)
+                        self.popup.open_scanning(10)  # example: 10 ticks to scan
                     else:
                         self.gameState = GameState.INTERACT
                         self.popup.open_interact(self._build_interact_options(sector))                
@@ -439,7 +440,7 @@ class Game:
                 key = token.get("key")
                 if key == "SIGINT" or key == "QUIT":
                     # zachovej původní chování pro Ctrl+C
-                    self.gameState = GameState.CONFIRM
+                    self.gameState = GameState.QUIT_CONFIRM
                     self._handle_quit_confirm()
                     return
 
@@ -651,8 +652,8 @@ class Game:
 
 
     def _handle_quit_confirm(self):
-        if not (self.gameState == GameState.CONFIRM):
-            self.gameState = GameState.CONFIRM
+        if not (self.gameState == GameState.QUIT_CONFIRM):
+            self.gameState = GameState.QUIT_CONFIRM
         self._show_quit_dialog()
 
     def _show_quit_dialog(self):

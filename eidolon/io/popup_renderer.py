@@ -1,10 +1,14 @@
 import curses
+import logging
+from eidolon.config import LOG_LEVEL
 from eidolon.mechanics.game_state import GameState
 
 
 class PopupRenderer:
     def __init__(self):
-        self.mode = GameState.SCANNING
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(filename="eidolon.log", encoding="utf-8", level=LOG_LEVEL)
+        self.mode = None
         self.active = False
 
         # scanning
@@ -56,6 +60,7 @@ class PopupRenderer:
         if self.mode == GameState.SCANNING:
             self.scan_ticks_left -= 1
             if self.scan_ticks_left <= 0:
+                self.logger.debug("Scanning finished.")
                 return True
         return False
 
@@ -78,10 +83,12 @@ class PopupRenderer:
 
         # SCANNING ignores input
         if self.mode == GameState.SCANNING:
+            self.logger.debug("Input ignored during scanning.")
             return None
 
         # INTERACT MENU
         if self.mode == GameState.INTERACT:
+            self.logger.debug("Handling input in INTERACT mode: %s", action)
             if action == "navigate_up":
                 self.selected = max(0, self.selected - 1)
 
@@ -96,6 +103,7 @@ class PopupRenderer:
 
         # CONFIRM DIALOG
         elif self.mode == GameState.CONFIRM:
+            self.logger.debug("Handling input in CONFIRM mode: %s", action)
             if action == "confirm":
                 return ("yes", None)
             if action == "cancel":
@@ -112,12 +120,15 @@ class PopupRenderer:
             return
 
         if self.mode == GameState.SCANNING:
+            self.logger.debug("Rendering scanning popup.")
             self._render_scanning(stdscr)
 
         elif self.mode == GameState.INTERACT:
+            self.logger.debug("Rendering interact popup.")
             self._render_interact(stdscr)
 
         elif self.mode == GameState.CONFIRM:
+            self.logger.debug("Rendering confirm popup.")
             self._render_confirm(stdscr)
 
     # ------------------------------------------------------------

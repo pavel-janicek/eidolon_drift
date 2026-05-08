@@ -19,7 +19,7 @@ def handle_command(game, raw_cmd: str) -> str:
     args = parts[1:]
 
     if verb in ("quit", "exit"):
-        game.gameState = GameState.CONFIRM
+        game.gameState = GameState.QUIT_CONFIRM
         game._handle_quit_confirm()
         return "Quit game? (y/n)"
 

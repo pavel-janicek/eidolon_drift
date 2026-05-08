@@ -10,3 +10,4 @@ class GameState(Enum):
     ESCAPE = auto()
     QUIT = auto()
     DEATH = auto()
+    QUIT_CONFIRM = auto()  # confirm quit from pause menu
