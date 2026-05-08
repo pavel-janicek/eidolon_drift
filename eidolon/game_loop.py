@@ -67,6 +67,8 @@ except ImportError:
 from pathlib import Path
 import random
 import logging
+import time
+import signal
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world import sector
 from eidolon.world.player import Player
@@ -220,10 +222,8 @@ class Game:
             pass
 
     
-
     def run(self, stdscr=None):
-        import time
-        import signal
+       
 
         def _sigint_handler(signum, frame):
             raise KeyboardInterrupt
@@ -231,81 +231,78 @@ class Game:
         signal.signal(signal.SIGINT, _sigint_handler)
 
         try:
+            while True:
 
-            if self.renderer:
-                try:
-                    self.renderer.render()
-                except Exception as e:
-                    self.push_message(f"[debug] initial renderer.render() failed: {e}")
-
-            while (self.gameState == GameState.RUNNING):
-
-                if (self.gameState == GameState.CONFIRM):
-                    self._handle_quit_confirm()
-                    continue
-                    
-                elif (self.gameState == GameState.ESCAPE):
-                    self._handle_escape_confirm()
-                    continue
-
-                elif self.gameState == GameState.SCANNING:
-                    self.popup.open_scanning(20)
-                    continue
-
-                elif self.gameState in (GameState.INTERACT, GameState.CONFIRM):
-                    # interact menu is opened from input handling, so we just need to render and handle its input
-                    continue
-                    
-
-
-
-
-
-                # render
+                # ----------------------------------------------------
+                # 1) RENDER
+                # ----------------------------------------------------
                 if self.renderer:
                     try:
                         self.renderer.render()
                     except Exception as e:
                         self.push_message(f"[debug] renderer.render error: {e}")
 
-                # input
+                # popup overlay
+                if self.popup and self.popup.active:
+                    try:
+                        self.popup.render(self.stdscr)
+                    except Exception as e:
+                        self.push_message(f"[debug] popup.render error: {e}")
+
+                # ----------------------------------------------------
+                # 2) INPUT
+                # ----------------------------------------------------
+                token = None
                 if self.input_handler:
                     token = self.input_handler.process_once(0.2)
-                    if self.gameState == GameState.SCANNING:
-                        if self.popup.tick():
-                            sector = self.map.get_sector(self.player.x, self.player.y)
-                            sector.scanned = True
-                            self.gameState = GameState.INTERACT
-                            self.popup.open_interact(self._build_interact_options(sector))
-                        return
-                    if self.gameState in (GameState.INTERACT, GameState.CONFIRM):
-                        pop_result = self.popup.handle_input(token)
-                        if pop_result:
-                            self._process_popup_result(pop_result)    
-                        return    
                 else:
                     self.logger.error("No input handler")
-                    token = None
 
-                if token == "QUIT_REQUEST":
-                    self.gameState = GameState.CONFIRM
-                    self.push_message("Quit game? (y/n)")
+                # ----------------------------------------------------
+                # 3) STATE MACHINE
+                # ----------------------------------------------------
+
+                # QUIT
+                if self.gameState == GameState.QUIT:
+                    break
+
+                # SCANNING
+                if self.gameState == GameState.SCANNING:
+                    if self.popup.tick():
+                        sector = self.map.get_sector(self.player.x, self.player.y)
+                        sector.scanned = True
+                        self.gameState = GameState.INTERACT
+                        self.popup.open_interact(self._build_interact_options(sector))
+                    # scanning ignores input
+                    time.sleep(0.02)
                     continue
 
-                if token is not None:
-                    self.handle_token(token)
-                
+                # INTERACT / CONFIRM
+                if self.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                    if token:
+                        result = self.popup.handle_input(token)
+                        if result:
+                            self._process_popup_result(result)
+                    time.sleep(0.02)
+                    continue
 
-                # tick
-                self.tick()
+                # RUNNING
+                if self.gameState == GameState.RUNNING:
+                    if token == "QUIT_REQUEST":
+                        self.gameState = GameState.CONFIRM
+                        self.popup.open_confirm("Quit game?")
+                        continue
 
-                time.sleep(0.02)
+                    if token is not None:
+                        self.handle_token(token)
+
+                    self.tick()
+                    time.sleep(0.02)
 
         except KeyboardInterrupt:
             self.gameState = GameState.CONFIRM
-            self._handle_quit_confirm()
-        except Exception as e:
-            self.logger.exception(f"Game.run error: {e}")
+            self.popup.open_confirm("Quit game?")
+
 
     def handle_token(self, token):
         # token může být None nebo dict
@@ -381,6 +378,7 @@ class Game:
                             self.push_message(result)
                 elif name == "interact":
                     sector = self.map.get_sector(self.player.x, self.player.y)
+                    self.logger.debug("Opening interact menu for sector at (%d, %d)", self.player.x, self.player.y)
                     if not sector.scanned:
                         self.gameState = GameState.SCANNING
                         self.popup.open_scanning(20)
@@ -526,6 +524,8 @@ class Game:
         if self._ambient_tick_counter >= self.ambient_spawn_interval:
             self.tick_spawn_ambient()
             self._ambient_tick_counter = 0
+
+        self.popup.tick()  # allow popup to update if needed (e.g. scanning countdown)    
 
     def handle_command(self, cmd):
         try:
@@ -883,6 +883,7 @@ class Game:
                     options.append((f"Decrypt log", ("decrypt", obj)))
 
         options.append(("Cancel", ("cancel", None)))
+        self.logger.debug("Built interact options: %s", options)
         return options
     
     def _process_popup_result(self, result):
