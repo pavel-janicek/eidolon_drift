@@ -21,6 +21,7 @@ import os
 from typing import Callable, Dict, List, Optional, Tuple
 
 from eidolon.io.controller_map import CONTROLLERS_DIR, find_controller_map_by_name, _load_json_file, merge_with_defaults
+from eidolon.mechanics.game_state import GameState
 
 
 logger = logging.getLogger("eidolon.input")
@@ -314,7 +315,7 @@ class InputHandler:
 
     def _check_axis_actions(self):
     # check axis-based mappings (e.g., triggers)
-        for action, spec in list(self.button_map.items()):
+        for action, spec in list(self.dpad_button_map.items()):
             # defensive: spec must be a sequence and have at least one element
             if not isinstance(spec, (list, tuple)):
                 # skip plain integer mappings (these are controller index maps, not action specs)
@@ -395,13 +396,28 @@ class InputHandler:
         self.logger.debug("Unhandled button_down index=%r", btn_index)
 
 
-    def _dispatch_action(self, action_key: str):
-        action_name = DEFAULT_ACTIONS.get(action_key, action_key)
-        logger.debug("InputHandler dispatch action %s", action_name)
-        try:
-            self.on_action(action_name, None)
-        except Exception:
-            logger.exception("InputHandler: on_action raised")
+    def _dispatch_action(self, action_name):
+        game = self.game
+
+        # --- PRIMARY BUTTON (X) ---
+        if action_name == "primary":
+            if game.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                self._enqueue_event({"type": "action", "name": "confirm"})
+            else:
+                self._enqueue_event({"type": "action", "name": "interact"})
+            return
+
+        # --- SECONDARY BUTTON (Circle) ---
+        if action_name == "secondary":
+            if game.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                self._enqueue_event({"type": "action", "name": "cancel"})
+            else:
+                self._enqueue_event({"type": "action", "name": "inspect"})
+            return
+
+        # --- ostatní akce z JSONu ---
+        self._enqueue_event({"type": "action", "name": action_name})
+
 
     def _emit_move(self, mx: float, my: float):
         if mx == 0 and my == 0:
