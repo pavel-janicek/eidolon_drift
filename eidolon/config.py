@@ -23,4 +23,6 @@ SECTOR_TYPE_WEIGHTS = {
     "EMPTY": 0.948,
 }
 
-LOG_LEVEL = logging.DEBUG  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+TICKS_TO_SCAN = 5  # počet ticků potřebných k naskenování sektoru
+
+LOG_LEVEL = logging.INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL

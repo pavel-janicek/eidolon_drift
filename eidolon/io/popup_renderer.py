@@ -96,6 +96,7 @@ class PopupRenderer:
                 self.selected = min(len(self.options) - 1, self.selected + 1)
 
             elif action == "confirm":
+                self.logger.debug("Selected option: %s", self.options[self.selected][0])
                 return self.options[self.selected][1]
 
             elif action == "cancel":

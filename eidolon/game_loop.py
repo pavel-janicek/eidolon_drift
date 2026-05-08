@@ -69,6 +69,7 @@ import random
 import logging
 import time
 import signal
+from unittest import result
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world import sector
 from eidolon.world.player import Player
@@ -80,7 +81,7 @@ from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
 from eidolon.mechanics.game_state import GameState
-from eidolon.config import LOG_LEVEL
+from eidolon.config import LOG_LEVEL, TICKS_TO_SCAN
 
 
 class Game:
@@ -290,6 +291,7 @@ class Game:
                         action = token["name"]
                         pop_result = self.popup.handle_input(action)
                     if pop_result:
+                        self.logger.debug("Popup result: %s", pop_result)
                         self._process_popup_result(pop_result)
                     time.sleep(0.02)
                     continue
@@ -390,7 +392,7 @@ class Game:
                     self.logger.debug("Opening interact menu for sector at (%d, %d)", self.player.x, self.player.y)
                     if not sector.scanned:
                         self.gameState = GameState.SCANNING
-                        self.popup.open_scanning(10)  # example: 10 ticks to scan
+                        self.popup.open_scanning(TICKS_TO_SCAN)
                     else:
                         self.gameState = GameState.INTERACT
                         self.popup.open_interact(self._build_interact_options(sector))                
@@ -897,20 +899,29 @@ class Game:
     
     def _process_popup_result(self, result):
         action, payload = result
-        self.gameState = GameState.RUNNING  # vždy se vrať do RUNNING po zpracování výsledku popupu
-        if action == "use":
-            cmdmod.handle_command(self, f"use {payload['id']}")
-        elif action == "inspect":
-            cmdmod.handle_command(self, f"inspect {payload['id']}")
-        elif action == "inspect_full":
-            cmdmod.handle_command(self, f"inspect_full {payload['id']}")
-        elif action == "decrypt":
-            cmdmod.handle_command(self, f"decrypt {payload['id']}")
-        elif action == "env":
+
+        # zavřít popup jako první
+        self.popup.close()
+        self.gameState = GameState.RUNNING
+
+        # příkazy, které vrací text
+        if action in ("use", "inspect", "inspect_full", "decrypt"):
+            cmd = f"{action} {payload['id']}"
+            out = cmdmod.handle_command(self, cmd)
+            if out:
+                self.push_message(out)
+            return
+
+        # environment
+        if action == "env":
             details = "\n".join(f"{k}: {v}" for k, v in payload.items())
             self.push_message(f"Environment details:\n{details}")
-        elif action == "cancel":
-            pass  # nic nedělej
-        else:
-            self.logger.debug(f"Unknown popup result: {result}")
+            return
+
+        # cancel = nic
+        if action == "cancel":
+            return
+
+        self.logger.debug(f"Unknown popup result: {result}")
+
                     

@@ -129,6 +129,9 @@ class InputHandler:
             self.on_action = on_action_or_game if callable(on_action_or_game) else None
             self.stdscr = stdscr
 
+        self.stdscr.keypad(True)
+    
+
         if getattr(self, "stdscr", None):
             try:
                 self.stdscr.nodelay(True)
@@ -447,14 +450,21 @@ class InputHandler:
         if ch == 3:
             self._enqueue_event({"type": "control", "key": "SIGINT"})
             return
+        
+        # enter
+        if ch in (10, 13, curses.KEY_ENTER):
+            self._enqueue_event({"type": "action", "name": "confirm"})
+            return  
 
         # arrow keys and WASD
         try:
             if ch == curses.KEY_UP or ch in (ord('w'), ord('W')):
                 self._enqueue_event({"type": "move_dir", "dir": "UP"})
+                self._enqueue_event({"type": "action", "name": "navigate_up"})
                 return
             if ch == curses.KEY_DOWN or ch in (ord('s'), ord('S')):
                 self._enqueue_event({"type": "move_dir", "dir": "DOWN"})
+                self._enqueue_event({"type": "action", "name": "navigate_down"})
                 return
             if ch == curses.KEY_LEFT or ch in (ord('a'), ord('A')):
                 self._enqueue_event({"type": "move_dir", "dir": "LEFT"})
@@ -487,7 +497,7 @@ class InputHandler:
         if ch in (ord('i'), ord('I')):
             self._enqueue_event({"type": "action", "name": "interact"})
             return
-        if ch in (ord('k'), ord('K')):
+        if ch in (27, ord('k'), ord('K')):
             self._enqueue_event({"type": "action", "name": "cancel"})
             return
 
