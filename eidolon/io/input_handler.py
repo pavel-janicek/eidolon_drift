@@ -131,6 +131,7 @@ class InputHandler:
         else:
             self.game = on_action_or_game
             self.stdscr = stdscr
+            self.on_action = None
 
 
 

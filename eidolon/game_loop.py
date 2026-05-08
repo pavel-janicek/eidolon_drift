@@ -912,11 +912,20 @@ class Game:
                 self.push_message(out)
             return
 
-        # environment
         if action == "env":
-            details = "\n".join(f"{k}: {v}" for k, v in payload.items())
-            self.push_message(f"Environment details:\n{details}")
+            lines = ["Environment details:"]
+            for k, v in payload.items():
+                if isinstance(v, list):
+                    lines.append(f"{k}:")
+                    for item in v:
+                        lines.append(f"  - {item}")
+                else:
+                    lines.append(f"{k}: {v}")
+
+            for line in lines:
+                self.push_message(line)
             return
+
 
         # cancel = nic
         if action == "cancel":
