@@ -478,11 +478,17 @@ class InputHandler:
         if ch in (ord('x'), ord('X')):
             self._enqueue_event({"type": "action", "name": "use"})
             return
-        if ch in (ord('i'), ord('I')):
+        if ch in (ord('j'), ord('J')):
             self._enqueue_event({"type": "action", "name": "inspect"})
             return
         if ch in (ord('q'), ord('Q')):
             self._enqueue_event({"type": "control", "key": "QUIT"})
+            return
+        if ch in (ord('i'), ord('I')):
+            self._enqueue_event({"type": "action", "name": "interact"})
+            return
+        if ch in (ord('k'), ord('K')):
+            self._enqueue_event({"type": "action", "name": "cancel"})
             return
 
        # colon command entry: ':' then read line (blocking)

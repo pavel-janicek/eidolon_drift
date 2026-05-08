@@ -248,6 +248,18 @@ class Game:
                     self._handle_escape_confirm()
                     continue
 
+                elif self.gameState == GameState.SCANNING:
+                    self.popup.open_scanning(20)
+                    continue
+
+                elif self.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                    # interact menu is opened from input handling, so we just need to render and handle its input
+                    continue
+                    
+
+
+
+
 
                 # render
                 if self.renderer:
@@ -872,4 +884,23 @@ class Game:
 
         options.append(("Cancel", ("cancel", None)))
         return options
+    
+    def _process_popup_result(self, result):
+        action, payload = result
+        self.gameState = GameState.RUNNING  # vždy se vrať do RUNNING po zpracování výsledku popupu
+        if action == "use":
+            cmdmod.handle_command(self, f"use {payload['id']}")
+        elif action == "inspect":
+            cmdmod.handle_command(self, f"inspect {payload['id']}")
+        elif action == "inspect_full":
+            cmdmod.handle_command(self, f"inspect_full {payload['id']}")
+        elif action == "decrypt":
+            cmdmod.handle_command(self, f"decrypt {payload['id']}")
+        elif action == "env":
+            details = "\n".join(f"{k}: {v}" for k, v in payload.items())
+            self.push_message(f"Environment details:\n{details}")
+        elif action == "cancel":
+            pass  # nic nedělej
+        else:
+            self.logger.debug(f"Unknown popup result: {result}")
                     
