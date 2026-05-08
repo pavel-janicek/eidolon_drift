@@ -263,6 +263,12 @@ class Game:
                 # ----------------------------------------------------
 
                 # QUIT
+                if self.gameState == GameState.CONFIRM:
+                    self._handle_quit_confirm()
+                    break
+                if self.gameState == GameState.ESCAPE:
+                    self._show_escape_dialog()
+                    break
                 if self.gameState == GameState.QUIT:
                     break
 
@@ -279,18 +285,20 @@ class Game:
 
                 # INTERACT / CONFIRM
                 if self.gameState in (GameState.INTERACT, GameState.CONFIRM):
-                    if token:
-                        result = self.popup.handle_input(token)
-                        if result:
-                            self._process_popup_result(result)
+                    if token and token.get("type") == "action":
+                        action = token["name"]
+                        pop_result = self.popup.handle_input(action)
+                    if pop_result:
+                        self._process_popup_result(pop_result)
                     time.sleep(0.02)
                     continue
+
 
                 # RUNNING
                 if self.gameState == GameState.RUNNING:
                     if token == "QUIT_REQUEST":
                         self.gameState = GameState.CONFIRM
-                        self.popup.open_confirm("Quit game?")
+                        self._handle_quit_confirm()
                         continue
 
                     if token is not None:
@@ -301,7 +309,7 @@ class Game:
 
         except KeyboardInterrupt:
             self.gameState = GameState.CONFIRM
-            self.popup.open_confirm("Quit game?")
+            self._handle_quit_confirm()
 
 
     def handle_token(self, token):
