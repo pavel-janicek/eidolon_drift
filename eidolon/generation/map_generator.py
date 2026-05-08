@@ -449,6 +449,12 @@ class MapGenerator:
         return choices
 
     def _populate_objects(self, sector):
+        # --- DEBUG: log placement of special modules ---
+        special_ids = {
+            "module_captain_override",
+            "module_engineering_stabilizer",
+            "module_biometric_seal"
+        }
         choices = self._choose_templates_for_sector(sector.type)
         if not choices:
             return
@@ -474,6 +480,12 @@ class MapGenerator:
                     if not hasattr(sector, "objects") or sector.objects is None:
                         sector.objects = []
                     sector.objects.append(obj)
+
+                    obj_id = obj.get("id") if isinstance(obj, dict) else None
+                    if obj_id in special_ids:
+                        self.logger.debug(
+                            f"Placed special module '{obj_id}' in sector {sector.name} ({sector.x},{sector.y})"
+                        )
 
                     if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
                         event_id = tpl.get("linger_event", tpl.get("id"))
