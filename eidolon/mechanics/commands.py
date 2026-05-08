@@ -280,6 +280,25 @@ def _cmd_inspect(game, raw_target):
     dict_objs = [o for o in sector.objects if isinstance(o, dict)]
     str_objs = [o for o in sector.objects if isinstance(o, str)]
 
+    # 0) match by internal ID (popup uses this)
+    for o in dict_objs:
+        if o.get("id") == target:
+            if o.get("type") == "log":
+                if o.get("fragmented") and not full_flag:
+                    snippet = o.get("content", "")[:120]
+                    game.push_message(f"{o.get('title')}: {snippet} ... (fragmented)")
+                    game.push_message("Use 'inspect <name> full' to read the entire entry.")
+                    return None
+                lines = [o.get("title", "Log"), "-" * 40] + o.get("content", "").splitlines()
+                if _open_pager_if_possible(lines):
+                    return None
+                return "\n".join(lines)
+
+            _apply_on_inspect_effect(o, full_flag=full_flag)
+            return _describe_object_short(o)
+    
+
+
     # 0) numeric index match (1-based) for dict objects: "1" -> first dict object
     if target_norm.isdigit():
         idx = int(target_norm) - 1
