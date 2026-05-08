@@ -1,11 +1,12 @@
-from enum import Enum, unique
+from enum import Enum, unique, auto
 
 @unique
-class GameState(Enum):
-    RUNNING = 1
-    INTERACT = 2        # player is choosing Inspect/Use/Cancel
-    CONFIRM = 3         # confirm dialog (yes/no)
-    PAUSED = 4
-    ESCAPE = 5
-    QUIT = 6
-    DEATH = 7
+class GameState(Enum):  
+    RUNNING = auto()
+    INTERACT = auto()        # player is choosing Inspect/Use/Cancel
+    SCANNING = auto()
+    CONFIRM = auto()        # confirm dialog (yes/no)
+    PAUSED = auto()
+    ESCAPE = auto()
+    QUIT = auto()
+    DEATH = auto()

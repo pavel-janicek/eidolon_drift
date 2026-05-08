@@ -8,3 +8,4 @@ class Sector:
         self.description = description
         self.objects = []
         self.environment = {}
+        self.scanned = False

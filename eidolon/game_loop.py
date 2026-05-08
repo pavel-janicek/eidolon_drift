@@ -821,12 +821,12 @@ class Game:
         except KeyboardInterrupt:
             # ignoruj opakované Ctrl+C během dialogu
             try:
-                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                self.logger.debug("[debug] escape dialog interrupted by Ctrl+C")
             except Exception:
                 pass
         finally:
             # vždy vyčistit flag, aby run() pokračovalo normálně
-            self.logger.debug("escape dialog finished, resetting gameState to RUNNING")
+            self.logger.debug("escape dialog finished, resetting gameState to QUIT")
             self.gameState = GameState.QUIT
 
             
