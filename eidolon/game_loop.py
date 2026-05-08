@@ -72,6 +72,7 @@ from eidolon.world import sector
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
 from eidolon.io.output_renderer import OutputRenderer
+from eidolon.io.popup_renderer import PopupRenderer
 from eidolon.mechanics.movement import move_player
 from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
@@ -154,6 +155,7 @@ class Game:
         self.renderer = None
         self.running = True
         self.gameState = GameState.RUNNING
+        self.popup = PopupRenderer()
 
         # messages buffer and debug push helper
         self.messages = []
@@ -257,8 +259,20 @@ class Game:
                 # input
                 if self.input_handler:
                     token = self.input_handler.process_once(0.2)
+                    if self.gameState == GameState.SCANNING:
+                        if self.popup.tick():
+                            sector = self.map.get_sector(self.player.x, self.player.y)
+                            sector.scanned = True
+                            self.gameState = GameState.INTERACT
+                            self.popup.open_interact(self._build_interact_options(sector))
+                        return
+                    if self.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                        pop_result = self.popup.handle_input(token)
+                        if pop_result:
+                            self._process_popup_result(pop_result)    
+                        return    
                 else:
-                    self.push_message("No input handler")
+                    self.logger.error("No input handler")
                     token = None
 
                 if token == "QUIT_REQUEST":
@@ -353,6 +367,14 @@ class Game:
                                 self.push_message(l)
                         else:
                             self.push_message(result)
+                elif name == "interact":
+                    sector = self.map.get_sector(self.player.x, self.player.y)
+                    if not sector.scanned:
+                        self.gameState = GameState.SCANNING
+                        self.popup.open_scanning(20)
+                    else:
+                        self.gameState = GameState.INTERACT
+                        self.popup.open_interact(self._build_interact_options(sector))                
                 else:
                     # další akce
                     self.logger.debug("Unhandled action token: %s", token)
@@ -829,4 +851,25 @@ class Game:
             self.logger.debug("escape dialog finished, resetting gameState to QUIT")
             self.gameState = GameState.QUIT
 
-            
+    def _build_interact_options(self, sector):
+        options = []
+
+        # environment
+        if sector.environment:
+            options.append(("Environment details", ("env", sector.environment)))
+
+        # objects
+        for obj in sector.objects:
+            if obj["type"] == "item":
+                options.append((f"Use {obj['title']}", ("use", obj)))
+                options.append((f"Inspect {obj['title']}", ("inspect", obj)))
+
+            if obj["type"] == "log":
+                options.append((f"Inspect log", ("inspect", obj)))
+                options.append((f"Inspect full log", ("inspect_full", obj)))
+                if obj.get("encrypted"):
+                    options.append((f"Decrypt log", ("decrypt", obj)))
+
+        options.append(("Cancel", ("cancel", None)))
+        return options
+                    
