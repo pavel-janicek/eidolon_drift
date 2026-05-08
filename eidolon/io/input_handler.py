@@ -117,12 +117,21 @@ class InputHandler:
         - new call:    InputHandler(on_action_callable, stdscr)
         """
         # detect legacy usage: first arg is curses window (has getch)
-        if callable(on_action_or_game):
-            self.on_action = on_action_or_game
-            self.game = None
+        is_legacy = (
+            on_action_or_game is not None
+            and stdscr is None
+            and hasattr(on_action_or_game, "getch")
+            and not callable(on_action_or_game)
+            and not hasattr(on_action_or_game, "gameState")   # nebo jiný znak Game objektu
+        )
+
+        if is_legacy:
+            self.stdscr = on_action_or_game
+            self.on_action = None
         else:
             self.game = on_action_or_game
-            self.on_action = None
+            self.stdscr = stdscr
+
 
 
         if getattr(self, "stdscr", None):
