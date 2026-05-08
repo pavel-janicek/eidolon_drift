@@ -154,7 +154,7 @@ class Game:
 
         # --- player and core systems ---
         self.player = Player(x=start[0], y=start[1])
-        self.input_handler = InputHandler(stdscr)
+        self.input_handler = InputHandler(self, stdscr)
         self.renderer = None
         self.running = True
         self.gameState = GameState.RUNNING

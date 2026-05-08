@@ -117,21 +117,13 @@ class InputHandler:
         - new call:    InputHandler(on_action_callable, stdscr)
         """
         # detect legacy usage: first arg is curses window (has getch)
-        if (
-            on_action_or_game is not None
-            and stdscr is None
-            and hasattr(on_action_or_game, "getch")
-        ):
-            # legacy: InputHandler(stdscr)
-            self.stdscr = on_action_or_game
-            self.on_action = None
+        if callable(on_action_or_game):
+            self.on_action = on_action_or_game
+            self.game = None
         else:
-            # new-style: first arg is callback (callable) or None
-            self.on_action = on_action_or_game if callable(on_action_or_game) else None
-            self.stdscr = stdscr
+            self.game = on_action_or_game
+            self.on_action = None
 
-        self.stdscr.keypad(True)
-    
 
         if getattr(self, "stdscr", None):
             try:
@@ -223,15 +215,10 @@ class InputHandler:
             dpad = final_map.get("dpad_buttons", {})
             self.dpad_map = {int(k): v for k, v in dpad.items()} if dpad else {}
             self.action_by_button_name = final_map.get("action_by_button_name", {}) or {}
-            if not getattr(self, "action_map", None):
-                cb = self.controller_buttons
-                self.action_map = {
-                    "use": ("button", cb.get("x", 0)),
-                    "inspect": ("button", cb.get("circle", 1)),
-                    "logs": ("button", cb.get("square", 2)),
-                    "scan": ("button", cb.get("triangle", 3)),
-                    "help": ("button", cb.get("r2", 7))
-                    }
+            # pokud hráč explicitně NEDEFINUJE action_map v JSONu,
+            # nech ho prázdný → použije se action_by_button_name
+            self.action_map = final_map.get("action_map", {})
+
             self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
         except Exception:
             self.logger.exception("InputHandler: failed to init pygame joystick")
@@ -354,6 +341,11 @@ class InputHandler:
         if dmap and isinstance(dmap, dict):
             dir_name = dmap.get(btn_index)
             if dir_name:
+                # v menu nechceme pohyb, ale navigaci
+                nav_action = "navigate_up" if dir_name == "UP" else "navigate_down" if dir_name == "DOWN" else None
+                if nav_action:
+                    self._enqueue_event({"type": "action", "name": nav_action})
+                
                 self._enqueue_event({"type": "move_dir", "dir": dir_name})
                 return
 
@@ -381,10 +373,11 @@ class InputHandler:
                     self._dispatch_action("scan")
                 elif name == "square":
                     self._dispatch_action("logs")
-                elif name == "x":
-                    self._dispatch_action("use")
-                elif name == "circle":
-                    self._dispatch_action("inspect")
+                default_bind = getattr(self, "action_by_button_name", {}).get(name)
+                if default_bind:
+                    self._dispatch_action(default_bind)
+                    return
+
                 else:
                     # obecný fallback: pokud máš defaultní action_map_by_name, použij ji
                     default_bind = getattr(self, "action_by_button_name", {}).get(name)
@@ -631,12 +624,6 @@ class InputHandler:
         except Exception:
             self.logger.exception("InputHandler: on_action raised in _enqueue_event")
 
-    def _dispatch_action(self, action_key: str):
-        action_name = DEFAULT_ACTIONS.get(action_key, action_key)
-        self.logger.debug("InputHandler dispatch action %s", action_name)
-        token = {"type": "action", "name": action_name}
-        # vlož do fronty a zavolej callback
-        self._enqueue_event(token)
 
     def _emit_move(self, mx: float, my: float):
         if mx == 0 and my == 0:
