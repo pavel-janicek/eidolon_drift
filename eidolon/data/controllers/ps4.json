@@ -30,12 +30,12 @@
     "14": "RIGHT"
   },
   "action_by_button_name": {
-    "x": "use",
-    "circle": "inspect",
+    "x": "primary",
+    "circle": "secondary",
     "square": "logs",
-    "triangle": "scan",
-    "r2_axis": "help"
-  },
+    "triangle": "scan"
+},
+
   "hints": {
     "notes": "If your platform reports different axis indices, create platform-specific override file.",
     "defauult action mapping": {

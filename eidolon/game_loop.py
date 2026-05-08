@@ -67,16 +67,21 @@ except ImportError:
 from pathlib import Path
 import random
 import logging
+import time
+import signal
+from unittest import result
 from eidolon.generation.map_generator import MapGenerator
 from eidolon.world import sector
 from eidolon.world.player import Player
 from eidolon.io.input_handler import InputHandler
 from eidolon.io.output_renderer import OutputRenderer
+from eidolon.io.popup_renderer import PopupRenderer
 from eidolon.mechanics.movement import move_player
 from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
-from eidolon.config import LOG_LEVEL
+from eidolon.mechanics.game_state import GameState
+from eidolon.config import LOG_LEVEL, TICKS_TO_SCAN
 
 
 class Game:
@@ -149,9 +154,11 @@ class Game:
 
         # --- player and core systems ---
         self.player = Player(x=start[0], y=start[1])
-        self.input_handler = InputHandler(stdscr)
+        self.input_handler = InputHandler(self, stdscr)
         self.renderer = None
         self.running = True
+        self.gameState = GameState.RUNNING
+        self.popup = PopupRenderer()
 
         # messages buffer and debug push helper
         self.messages = []
@@ -196,12 +203,10 @@ class Game:
             joystick_connected = bool(getattr(ih, "_using_controller", False) or getattr(ih, "_pygame_joystick", None))
         if joystick_connected:
             self.push_message("Controller detected. Use face buttons for actions and D-pad/Left Stick for movement.")
-            self.push_message("Action buttons: X=Use, Circle=Inspect, Square=Logs, Triangle=Scan, R2=Help")
+            self.push_message("Action buttons: X=Primary, Circle=Secondary")
         else:    
-            self.push_message("Type ':help' for commands. Use WASD to move.")
-        self.awaiting_quit_confirm = False
-        # stav pro escape dialog
-        self.awaiting_escape_confirm = False
+            self.push_message("Type ':help' or '?' for commands. Use WASD to move.")
+        
 
     def push_message(self, text):
         if not hasattr(self, "messages"):
@@ -218,10 +223,8 @@ class Game:
             pass
 
     
-
     def run(self, stdscr=None):
-        import time
-        import signal
+       
 
         def _sigint_handler(signum, frame):
             raise KeyboardInterrupt
@@ -229,57 +232,88 @@ class Game:
         signal.signal(signal.SIGINT, _sigint_handler)
 
         try:
+            while True:
 
-            if self.renderer:
-                try:
-                    self.renderer.render()
-                except Exception as e:
-                    self.push_message(f"[debug] initial renderer.render() failed: {e}")
-
-            while self.running:
-
-                # quit confirm modal
-                if self.awaiting_quit_confirm:
-                    self._handle_quit_confirm()
-                    continue
-
-                if self.awaiting_escape_confirm:
-                    self._handle_escape_confirm()
-                    continue
-
-                # render
+                # ----------------------------------------------------
+                # 1) RENDER
+                # ----------------------------------------------------
                 if self.renderer:
                     try:
                         self.renderer.render()
                     except Exception as e:
                         self.push_message(f"[debug] renderer.render error: {e}")
 
-                # input
+                # popup overlay
+                if self.popup and self.popup.active:
+                    try:
+                        self.popup.render(self.stdscr)
+                    except Exception as e:
+                        self.push_message(f"[debug] popup.render error: {e}")
+
+                # ----------------------------------------------------
+                # 2) INPUT
+                # ----------------------------------------------------
+                token = None
                 if self.input_handler:
                     token = self.input_handler.process_once(0.2)
                 else:
-                    self.push_message("No input handler")
-                    token = None
+                    self.logger.error("No input handler")
 
-                if token == "QUIT_REQUEST":
-                    self.awaiting_quit_confirm = True
-                    self.push_message("Quit game? (y/n)")
+                # ----------------------------------------------------
+                # 3) STATE MACHINE
+                # ----------------------------------------------------
+
+                # QUIT
+                if self.gameState == GameState.QUIT_CONFIRM:
+                    self._handle_quit_confirm()
+                    break
+                if self.gameState == GameState.ESCAPE:
+                    self._show_escape_dialog()
+                    break
+                if self.gameState == GameState.QUIT:
+                    break
+
+                # SCANNING
+                if self.gameState == GameState.SCANNING:
+                    if self.popup.tick():
+                        sector = self.map.get_sector(self.player.x, self.player.y)
+                        sector.scanned = True
+                        self.gameState = GameState.INTERACT
+                        self.popup.open_interact(self._build_interact_options(sector))
+                    # scanning ignores input
+                    time.sleep(0.02)
                     continue
 
-                if token is not None:
-                    self.handle_token(token)
-                
+                # INTERACT / CONFIRM
+                if self.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                    pop_result = None
+                    if token and token.get("type") == "action":
+                        action = token["name"]
+                        pop_result = self.popup.handle_input(action)
+                    if pop_result:
+                        self.logger.debug("Popup result: %s", pop_result)
+                        self._process_popup_result(pop_result)
+                    time.sleep(0.02)
+                    continue
 
-                # tick
-                self.tick()
 
-                time.sleep(0.02)
+                # RUNNING
+                if self.gameState == GameState.RUNNING:
+                    if token == "QUIT_REQUEST":
+                        self.gameState = GameState.QUIT_CONFIRM
+                        self._handle_quit_confirm()
+                        continue
+
+                    if token is not None:
+                        self.handle_token(token)
+
+                    self.tick()
+                    time.sleep(0.02)
 
         except KeyboardInterrupt:
-            self.awaiting_quit_confirm = True
-            self.run()
-        except Exception as e:
-            self.push_message(f"[debug] Game.run error: {e}")
+            self.gameState = GameState.QUIT_CONFIRM
+            self._handle_quit_confirm()
+
 
     def handle_token(self, token):
         # token může být None nebo dict
@@ -353,6 +387,15 @@ class Game:
                                 self.push_message(l)
                         else:
                             self.push_message(result)
+                elif name == "interact":
+                    sector = self.map.get_sector(self.player.x, self.player.y)
+                    self.logger.debug("Opening interact menu for sector at (%d, %d)", self.player.x, self.player.y)
+                    if not sector.scanned:
+                        self.gameState = GameState.SCANNING
+                        self.popup.open_scanning(TICKS_TO_SCAN)
+                    else:
+                        self.gameState = GameState.INTERACT
+                        self.popup.open_interact(self._build_interact_options(sector))                
                 else:
                     # další akce
                     self.logger.debug("Unhandled action token: %s", token)
@@ -399,7 +442,7 @@ class Game:
                 key = token.get("key")
                 if key == "SIGINT" or key == "QUIT":
                     # zachovej původní chování pro Ctrl+C
-                    self.awaiting_quit_confirm = True
+                    self.gameState = GameState.QUIT_CONFIRM
                     self._handle_quit_confirm()
                     return
 
@@ -493,6 +536,8 @@ class Game:
             self.tick_spawn_ambient()
             self._ambient_tick_counter = 0
 
+        self.popup.tick()  # allow popup to update if needed (e.g. scanning countdown)    
+
     def handle_command(self, cmd):
         try:
             return cmdmod.handle_command(self, cmd)
@@ -501,11 +546,10 @@ class Game:
             return f"Command error: {e}"
 
     def handle_death(self, reason="You died."):
-        self.push_message(reason)
-        self.push_message("You have died. Game over.")
-        if self.renderer:
-            self.renderer.render()
-        self.running = False
+        if not (self.gameState == GameState.DEATH):
+            self.gameState = GameState.DEATH
+
+        self._show_death_dialog()            
 
     # in Game class
     def tick_spawn_ambient(self):
@@ -608,27 +652,10 @@ class Game:
         print(f"[debug] ambient messages not found. Tried: {tried}", file=sys.stderr)
         self.ambient_messages = []
 
-    def debug_emit_ambient(self):
-        if not getattr(self, "ambient_messages", None):
-            import sys
-
-            print("[debug] no ambient messages loaded", file=sys.stderr)
-            return
-        # choose using game RNG for reproducibility
-        msg = (
-            self.rng.choice(self.ambient_messages)
-            if getattr(self, "rng", None)
-            else self.ambient_messages[0]
-        )
-        # debug print to stderr and push to in‑game messages
-        import sys
-
-        print(f"[debug] forcing ambient message: {msg}", file=sys.stderr)
-        self.push_message(msg)
 
     def _handle_quit_confirm(self):
-        if not self.awaiting_quit_confirm:
-            self.awaiting_quit_confirm = True
+        if not (self.gameState == GameState.QUIT_CONFIRM):
+            self.gameState = GameState.QUIT_CONFIRM
         self._show_quit_dialog()
 
     def _show_quit_dialog(self):
@@ -655,11 +682,12 @@ class Game:
         while True:
             ch = self.stdscr.getch()
             if ch in (ord("y"), ord("Y")):
-                self.running = False
+                self.gameState = GameState.QUIT
                 return
             if ch in (ord("n"), ord("N")):
-                self.awaiting_quit_confirm = False
-            return
+                self.gameState = GameState.RUNNING
+                self.run(self.stdscr)
+                return
 
     def _show_escape_dialog(self):
         """
@@ -683,7 +711,7 @@ class Game:
             except Exception:
                 pass
             # ukončí hru
-            self.running = False
+            self.gameState = GameState.QUIT
             return
 
         dialog_w = min(60, w - 4)
@@ -734,27 +762,103 @@ class Game:
             except Exception as e:
                 # pokud getch selže, ukončí hru
                 self.push_message(f"Exiting game. {e}")
-                self.running = False
+                self.gameState = GameState.QUIT
                 return
 
             # Enter nebo Return
             if ch in (10, 13):
-                self.running = False
+                self.gameState = GameState.QUIT
                 return
             # také akceptuj libovolnou jinou klávesu jako potvrzení
             if ch != -1:
-                self.running = False
+                self.gameState = GameState.QUIT
             return
+        
+    def _show_death_dialog(self):
+        """
+        Jednoduchý modální dialog po použití escape podu.
+        Zobrazí final stats a [Ok]. Po Enter / libovolné klávese ukončí hru.
+        """
+        try:
+            h, w = self.stdscr.getmaxyx()
+        except Exception:
+            # fallback: textové zprávy pokud není stdscr
+            try:
+                self.push_message(
+                    "You habe died. Game over."
+                )
+            except Exception:
+                pass
+            # ukončí hru
+            self.gameState = GameState.QUIT
+            return
+
+        dialog_w = min(60, w - 4)
+        dialog_h = 7
+        x0 = (w - dialog_w) // 2
+        y0 = (h - dialog_h) // 2
+
+        win = curses.newwin(dialog_h, dialog_w, y0, x0)
+        try:
+            win.keypad(True)
+        except Exception:
+            pass
+        win.border()
+
+        title = " Game Over "
+        try:
+            win.addstr(0, max(1, (dialog_w - len(title)) // 2), title, curses.A_BOLD)
+        except Exception:
+            pass
+
+        lines = [
+            "You have died. Game over.",
+            "",
+            "",
+            "[ Ok ]  Press Enter to exit",
+        ]
+
+        for i, line in enumerate(lines, start=1):
+            try:
+                pad = max(0, (dialog_w - 2 - len(line)) // 2)
+                win.addstr(i, 1 + pad, line[: dialog_w - 2])
+            except Exception:
+                pass
+
+        win.refresh()
+
+        # blokující smyčka: čekej na Enter nebo libovolnou klávesu
+        while True:
+            try:
+                # čteme přímo z dialogového okna, ne ze stdscr
+                ch = win.getch()
+            except KeyboardInterrupt:
+                # ignoruj opakované Ctrl+C během dialogu
+                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                continue
+            except Exception as e:
+                # pokud getch selže, ukončí hru
+                self.push_message(f"Exiting game. {e}")
+                self.gameState = GameState.QUIT
+                return
+
+            # Enter nebo Return
+            if ch in (10, 13):
+                self.gameState = GameState.QUIT
+                return
+            # také akceptuj libovolnou jinou klávesu jako potvrzení
+            if ch != -1:
+                self.gameState = GameState.QUIT
+            return    
 
     def _handle_escape_confirm(self):
         """
-        Spustí escape dialog pokud je awaiting_escape_confirm True.
+        Spustí escape dialog pokud je gameState ESCAPE.
         Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
         """
-        if not getattr(self, "awaiting_escape_confirm", False):
-            # pokud není nastaven, nic nedělej (command nastaví flag)
-            self.awaiting_escape_confirm = True
-            return
+        self.logger.debug("escape function called")
+        if not (self.gameState == GameState.ESCAPE):
+            self.gameState = GameState.ESCAPE
 
         try:
             # zavolat dialog (blokující)
@@ -762,9 +866,71 @@ class Game:
         except KeyboardInterrupt:
             # ignoruj opakované Ctrl+C během dialogu
             try:
-                self.push_message("[debug] escape dialog interrupted by Ctrl+C")
+                self.logger.debug("[debug] escape dialog interrupted by Ctrl+C")
             except Exception:
                 pass
         finally:
             # vždy vyčistit flag, aby run() pokračovalo normálně
-            self.awaiting_escape_confirm = False
+            self.logger.debug("escape dialog finished, resetting gameState to QUIT")
+            self.gameState = GameState.QUIT
+
+    def _build_interact_options(self, sector):
+        options = []
+
+        # environment
+        if sector.environment:
+            options.append(("Environment details", ("env", sector.environment)))
+
+        # objects
+        for obj in sector.objects:
+            if obj["type"] == "item":
+                options.append((f"Use {obj['title']}", ("use", obj)))
+                options.append((f"Inspect {obj['title']}", ("inspect", obj)))
+
+            if obj["type"] == "log":
+                options.append((f"Inspect log", ("inspect", obj)))
+                options.append((f"Inspect full log", ("inspect_full", obj)))
+                if obj.get("encrypted"):
+                    options.append((f"Decrypt log", ("decrypt", obj)))
+
+        options.append(("Cancel", ("cancel", None)))
+        self.logger.debug("Built interact options: %s", options)
+        return options
+    
+    def _process_popup_result(self, result):
+        action, payload = result
+
+        # zavřít popup jako první
+        self.popup.close()
+        self.gameState = GameState.RUNNING
+
+        # příkazy, které vrací text
+        if action in ("use", "inspect", "inspect_full", "decrypt"):
+            cmd = f"{action} {payload['id']}"
+            out = cmdmod.handle_command(self, cmd)
+            if out:
+                self.push_message(out)
+            return
+
+        if action == "env":
+            lines = ["Environment details:"]
+            for k, v in payload.items():
+                if isinstance(v, list):
+                    lines.append(f"{k}:")
+                    for item in v:
+                        lines.append(f"  - {item}")
+                else:
+                    lines.append(f"{k}: {v}")
+
+            for line in lines:
+                self.push_message(line)
+            return
+
+
+        # cancel = nic
+        if action == "cancel":
+            return
+
+        self.logger.debug(f"Unknown popup result: {result}")
+
+                    

@@ -21,6 +21,7 @@ import os
 from typing import Callable, Dict, List, Optional, Tuple
 
 from eidolon.io.controller_map import CONTROLLERS_DIR, find_controller_map_by_name, _load_json_file, merge_with_defaults
+from eidolon.mechanics.game_state import GameState
 
 
 logger = logging.getLogger("eidolon.input")
@@ -116,18 +117,23 @@ class InputHandler:
         - new call:    InputHandler(on_action_callable, stdscr)
         """
         # detect legacy usage: first arg is curses window (has getch)
-        if (
+        is_legacy = (
             on_action_or_game is not None
             and stdscr is None
             and hasattr(on_action_or_game, "getch")
-        ):
-            # legacy: InputHandler(stdscr)
+            and not callable(on_action_or_game)
+            and not hasattr(on_action_or_game, "gameState")   # nebo jiný znak Game objektu
+        )
+
+        if is_legacy:
             self.stdscr = on_action_or_game
             self.on_action = None
         else:
-            # new-style: first arg is callback (callable) or None
-            self.on_action = on_action_or_game if callable(on_action_or_game) else None
+            self.game = on_action_or_game
             self.stdscr = stdscr
+            self.on_action = None
+
+
 
         if getattr(self, "stdscr", None):
             try:
@@ -219,15 +225,10 @@ class InputHandler:
             dpad = final_map.get("dpad_buttons", {})
             self.dpad_map = {int(k): v for k, v in dpad.items()} if dpad else {}
             self.action_by_button_name = final_map.get("action_by_button_name", {}) or {}
-            if not getattr(self, "action_map", None):
-                cb = self.controller_buttons
-                self.action_map = {
-                    "use": ("button", cb.get("x", 0)),
-                    "inspect": ("button", cb.get("circle", 1)),
-                    "logs": ("button", cb.get("square", 2)),
-                    "scan": ("button", cb.get("triangle", 3)),
-                    "help": ("button", cb.get("r2", 7))
-                    }
+            # pokud hráč explicitně NEDEFINUJE action_map v JSONu,
+            # nech ho prázdný → použije se action_by_button_name
+            self.action_map = final_map.get("action_map", {})
+
             self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
         except Exception:
             self.logger.exception("InputHandler: failed to init pygame joystick")
@@ -311,7 +312,7 @@ class InputHandler:
 
     def _check_axis_actions(self):
     # check axis-based mappings (e.g., triggers)
-        for action, spec in list(self.button_map.items()):
+        for action, spec in list(self.dpad_button_map.items()):
             # defensive: spec must be a sequence and have at least one element
             if not isinstance(spec, (list, tuple)):
                 # skip plain integer mappings (these are controller index maps, not action specs)
@@ -350,6 +351,11 @@ class InputHandler:
         if dmap and isinstance(dmap, dict):
             dir_name = dmap.get(btn_index)
             if dir_name:
+                # v menu nechceme pohyb, ale navigaci
+                nav_action = "navigate_up" if dir_name == "UP" else "navigate_down" if dir_name == "DOWN" else None
+                if nav_action:
+                    self._enqueue_event({"type": "action", "name": nav_action})
+                
                 self._enqueue_event({"type": "move_dir", "dir": dir_name})
                 return
 
@@ -377,10 +383,11 @@ class InputHandler:
                     self._dispatch_action("scan")
                 elif name == "square":
                     self._dispatch_action("logs")
-                elif name == "x":
-                    self._dispatch_action("use")
-                elif name == "circle":
-                    self._dispatch_action("inspect")
+                default_bind = getattr(self, "action_by_button_name", {}).get(name)
+                if default_bind:
+                    self._dispatch_action(default_bind)
+                    return
+
                 else:
                     # obecný fallback: pokud máš defaultní action_map_by_name, použij ji
                     default_bind = getattr(self, "action_by_button_name", {}).get(name)
@@ -392,13 +399,28 @@ class InputHandler:
         self.logger.debug("Unhandled button_down index=%r", btn_index)
 
 
-    def _dispatch_action(self, action_key: str):
-        action_name = DEFAULT_ACTIONS.get(action_key, action_key)
-        logger.debug("InputHandler dispatch action %s", action_name)
-        try:
-            self.on_action(action_name, None)
-        except Exception:
-            logger.exception("InputHandler: on_action raised")
+    def _dispatch_action(self, action_name):
+        game = self.game
+
+        # --- PRIMARY BUTTON (X) ---
+        if action_name == "primary":
+            if game.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                self._enqueue_event({"type": "action", "name": "confirm"})
+            else:
+                self._enqueue_event({"type": "action", "name": "interact"})
+            return
+
+        # --- SECONDARY BUTTON (Circle) ---
+        if action_name == "secondary":
+            if game.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                self._enqueue_event({"type": "action", "name": "cancel"})
+            else:
+                self._enqueue_event({"type": "action", "name": "inspect"})
+            return
+
+        # --- ostatní akce z JSONu ---
+        self._enqueue_event({"type": "action", "name": action_name})
+
 
     def _emit_move(self, mx: float, my: float):
         if mx == 0 and my == 0:
@@ -447,14 +469,21 @@ class InputHandler:
         if ch == 3:
             self._enqueue_event({"type": "control", "key": "SIGINT"})
             return
+        
+        # enter
+        if ch in (10, 13, curses.KEY_ENTER):
+            self._enqueue_event({"type": "action", "name": "confirm"})
+            return  
 
         # arrow keys and WASD
         try:
             if ch == curses.KEY_UP or ch in (ord('w'), ord('W')):
                 self._enqueue_event({"type": "move_dir", "dir": "UP"})
+                self._enqueue_event({"type": "action", "name": "navigate_up"})
                 return
             if ch == curses.KEY_DOWN or ch in (ord('s'), ord('S')):
                 self._enqueue_event({"type": "move_dir", "dir": "DOWN"})
+                self._enqueue_event({"type": "action", "name": "navigate_down"})
                 return
             if ch == curses.KEY_LEFT or ch in (ord('a'), ord('A')):
                 self._enqueue_event({"type": "move_dir", "dir": "LEFT"})
@@ -478,11 +507,17 @@ class InputHandler:
         if ch in (ord('x'), ord('X')):
             self._enqueue_event({"type": "action", "name": "use"})
             return
-        if ch in (ord('i'), ord('I')):
+        if ch in (ord('j'), ord('J')):
             self._enqueue_event({"type": "action", "name": "inspect"})
             return
         if ch in (ord('q'), ord('Q')):
             self._enqueue_event({"type": "control", "key": "QUIT"})
+            return
+        if ch in (ord('i'), ord('I')):
+            self._enqueue_event({"type": "action", "name": "interact"})
+            return
+        if ch in (27, ord('k'), ord('K')):
+            self._enqueue_event({"type": "action", "name": "cancel"})
             return
 
        # colon command entry: ':' then read line (blocking)
@@ -584,7 +619,6 @@ class InputHandler:
         """
         try:
             # neblokující put (fronta je neomezená, ale pro jistotu)
-            self.logger.debug(f"Enqueueing event: {token}")
             self._event_queue.put_nowait(token)
         except Exception:
             self.logger.exception("InputHandler: failed to enqueue event")
@@ -600,12 +634,6 @@ class InputHandler:
         except Exception:
             self.logger.exception("InputHandler: on_action raised in _enqueue_event")
 
-    def _dispatch_action(self, action_key: str):
-        action_name = DEFAULT_ACTIONS.get(action_key, action_key)
-        self.logger.debug("InputHandler dispatch action %s", action_name)
-        token = {"type": "action", "name": action_name}
-        # vlož do fronty a zavolej callback
-        self._enqueue_event(token)
 
     def _emit_move(self, mx: float, my: float):
         if mx == 0 and my == 0:

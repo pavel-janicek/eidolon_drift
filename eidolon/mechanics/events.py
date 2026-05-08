@@ -1,5 +1,6 @@
 # eidolon/mechanics/events.py
 import time
+from eidolon.mechanics.game_state import GameState
 
 
 class EventEngine:
@@ -21,6 +22,7 @@ class EventEngine:
             self.game.push_message(msg)
             if self.game.player.health <= 0:
                 # call game death handler
+                self.game.gameState = GameState.DEATH
                 self.game.handle_death(
                     event_def.get("death_message", "You succumbed to your injuries.")
                 )
