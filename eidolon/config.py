@@ -26,4 +26,4 @@ SECTOR_TYPE_WEIGHTS = {
 TICKS_TO_SCAN = 5  # počet ticků potřebných k naskenování sektoru
 FRAME_TIME = 1/30  # 30 FPS
 
-LOG_LEVEL = logging.INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL = logging.DEBUG  # DEBUG, INFO, WARNING, ERROR, CRITICAL

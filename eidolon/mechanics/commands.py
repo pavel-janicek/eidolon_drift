@@ -50,21 +50,7 @@ def handle_command(game, raw_cmd: str) -> str:
             return "No sector."
         # show raw objects for debugging
         return repr(sector.objects)
-    if verb == "use":
-        if not args:
-            return "Usage: use <object>"
-        target = " ".join(args)
-        return _cmd_use(game, target)
-    if verb == "theme":
-        name = args[0] if args else "dark"
-        if not hasattr(game, "renderer") or game.renderer is None:
-            return "No renderer available to apply a theme."
-        ok = game.renderer.apply_theme(name)
-        return (
-            f"Theme set to {name}"
-            if ok
-            else f"Unknown theme '{name}'. Available: {', '.join(game.renderer.THEMES.keys())}"
-        )
+
 
     return f"Unknown command: {verb}. Type 'help' for a list of commands."
 
@@ -72,14 +58,9 @@ def handle_command(game, raw_cmd: str) -> str:
 def _cmd_help(game):
     lines = [
         "Available commands:",
-        "  scan               - run diagnostics on current sector",
-        "  logs               - list readable logs in this sector",
-        "  inspect <object>   - inspect an object in the sector",
-        "  decrypt <object>   - attempt to decrypt a data fragment",
-        "  use <object>       - use an item from your inventory or the sector",
-        "  theme <name>        - change display theme (e.g. theme dark)",
-        "  help               - show this help",
-        "  quit               - exit the session",
+        "  help or ?: Show this help message.",
+        " I or Enter: Interact with an object. With joystick, press primary action button to interact",
+        " C or ESC: Cancel/Back. With joystick, press secondary action button to cancel.",
     ]
     for line in lines:
         game.push_message(line)
@@ -467,172 +448,46 @@ def _cmd_decrypt(game, target):
                     return "Decryption failed. Neural feedback caused minor disorientation."
     return f"No encrypted object named '{target}' found here."
 
-
-def _cmd_use(game, target):
     
-    target_norm = _normalize(target)
-        # --- joystick quick-use: pokud není zadán target a je připojen joystick,
-    #     preferuj první položku v inventáři, jinak první dict objekt v sektoru
-    ih = getattr(game, "input_handler", None)
-    joystick_connected = False
-    if ih is not None:
-        joystick_connected = bool(getattr(ih, "_using_controller", False) or getattr(ih, "_pygame_joystick", None))
-
-    if not target and joystick_connected:
-        # 1) inventory first
-        try:
-            inv = list(getattr(game.player, "inventory", []) or [])
-        except Exception:
-            inv = []
-        if inv:
-            # najdeme první dict položku v inventáři
-            for i, it in enumerate(inv):
-                if isinstance(it, dict):
-                    # znovu použijeme stávající logiku: nastavíme matches tak, aby vybral tuto položku
-                    matches = [("inv", i, it)]
-                    break
-            else:
-                matches = []
-        else:
-            matches = []
-
-        # 2) pokud nic v inventáři, zkus první dict objekt v sektoru
-        if not matches:
-            sector = game.map.get_sector(game.player.x, game.player.y)
-            if sector:
-                for i, o in enumerate(list(getattr(sector, "objects", []) or [])):
-                    if isinstance(o, dict):
-                        matches = [("sec", i, o)]
-                        break
-
-        if not matches:
-            return "No usable object found to use."
-
-        # vyber první match (inventář má prioritu díky pořadí výše)
-        source, idx, obj = matches[0]
-        # pokračujeme níže v původní logice s tímto obj
-
-
-    def _matches_obj(obj, target_norm):
-        if not isinstance(obj, dict):
-            return False
-        name = _normalize(obj.get("name", ""))
-        title = _normalize(obj.get("title", ""))
-        typ = _normalize(obj.get("type", ""))
-        obj_id = _normalize(obj.get("id", ""))
-        if (
-            target_norm == name
-            or target_norm == title
-            or target_norm == typ
-            or target_norm == obj_id
-        ):
-            return True
-        if target_norm in name or target_norm in title or target_norm in typ:
-            return True
-        return False
-
-    # collect matches (inventory first, then sector)
-    matches = []  # tuples: ("inv", index, obj) or ("sec", index, obj)
-    for i, it in enumerate(list(game.player.inventory)):
-        if isinstance(it, dict) and _matches_obj(it, target_norm):
-            matches.append(("inv", i, it))
-
-    sector = game.map.get_sector(game.player.x, game.player.y)
-    if sector:
-        for i, o in enumerate(list(getattr(sector, "objects", []) or [])):
-            if isinstance(o, dict) and _matches_obj(o, target_norm):
-                matches.append(("sec", i, o))
-
-    if not matches:
-        return f"No usable object named '{target}' found here."
-
-    # pick first match (inventory preferred because collected first)
-    source, idx, obj = matches[0]
-
-    # helper to adjust sanity safely
-    def _apply_sanity(delta):
-        # prefer explicit methods if available
-        if delta == 0:
-            return
-        # try gain_sanity for positive, lose_sanity for negative, fallback to gain_sanity with negative
-        try:
-            if delta > 0 and hasattr(game.player, "gain_sanity"):
-                game.player.gain_sanity(int(delta))
-                return
-            if delta < 0 and hasattr(game.player, "lose_sanity"):
-                game.player.lose_sanity(int(-delta))
-                return
-            # fallback: try adjust_sanity or gain_sanity with signed value
-            if hasattr(game.player, "adjust_sanity"):
-                game.player.adjust_sanity(int(delta))
-                return
-            if hasattr(game.player, "gain_sanity"):
-                game.player.gain_sanity(int(delta))
-                return
-        except Exception:
-            # best-effort: ignore if player API differs
-            pass
-
-    # process on_use
+def _use_object(self, obj):
     on_use = obj.get("on_use") or {}
-    action = on_use.get("action") if isinstance(on_use, dict) else None
+    action = on_use.get("action")
 
     # HEAL
     if action == "heal":
         amt = int(on_use.get("amount", 0))
         san = int(on_use.get("sanity", 0))
-        try:
-            game.player.heal(amt)
-        except Exception:
-            pass
-        _apply_sanity(san)
-        # remove consumable
-        if source == "inv":
-            try:
-                game.player.inventory.pop(idx)
-            except Exception:
-                pass
-        else:
-            try:
-                sector.objects.pop(idx)
-            except Exception:
-                pass
-        return f"You use the {obj.get('title','item')}. Restored {amt} health and gained {san} sanity."
+        self.player.heal(amt)
+        if san:
+            self.player.gain_sanity(san)
+        return f"{obj.get('title')} used. Health +{amt}, Sanity +{san}."
 
-    # SANITY action (positive or negative)
+    # SANITY
     if action == "sanity":
         amt = int(on_use.get("amount", 0))
-        _apply_sanity(amt)
-        # remove if consumable (optional; keep or remove depending on design)
-        if source == "inv":
-            try:
-                game.player.inventory.pop(idx)
-            except Exception:
-                pass
-        else:
-            try:
-                sector.objects.pop(idx)
-            except Exception:
-                pass
+        self.player.adjust_sanity(amt)
         if amt >= 0:
-            return f"You use the {obj.get('title','item')}. Sanity +{amt}."
+            return f"{obj.get('title')} used. Sanity +{amt}."
         else:
-            return f"You use the {obj.get('title','item')}. A chill runs down your spine. Sanity {amt}."
-        
-        # FLAG action (generic key/value override)
+            return f"{obj.get('title')} used. Something is wrong. Sanity {amt}."
+
+    # FLAG (moduly)
     if action == "flag":
         flag_name = on_use.get("flag")
         flag_value = on_use.get("value", True)
-        flavor_text = obj.get("flavor_text")
+        flavor = obj.get("flavor_text") or "Module activated."
 
-        # nastav flag do game objektu
-        try:
-            setattr(game, flag_name, flag_value)
-        except Exception:
-            pass
+        setattr(self, flag_name, flag_value)
+        return flavor
 
-        # modul se nespotřebovává (ale můžeš změnit)
-        return f"You activate the {obj.get('title','module')}. {flavor_text or ''}"
+    # ESCAPE
+    if action == "escape":
+        self.gameState = GameState.ESCAPE
+        self._handle_escape_confirm()
+        return None
+
+    return f"{obj.get('title')} has no effect."
+
     
 
     # ESCAPE action
