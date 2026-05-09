@@ -555,6 +555,8 @@ class MapGenerator:
                 selected_log = self.rng.choice(self.log_pool)
 
             if selected_log:
+                obj["id"] = selected_log["id"]
+                obj["title"] = selected_log.get("title", obj.get("title"))
                 template_str = obj.get("content_template", "{text}")
                 content = template_str.format(
                     text=selected_log.get("text", ""),
