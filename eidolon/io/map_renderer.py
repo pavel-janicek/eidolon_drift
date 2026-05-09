@@ -60,6 +60,8 @@ except ImportError:
         curses = MockCurses()
 import math
 
+from eidolon.world import sector
+
 
 class MapRenderer:
     def __init__(self, parent):
@@ -104,31 +106,39 @@ class MapRenderer:
                                 else 0
                             )
                         else:
-                            # object has priority
-                            if obj_marker and self.parent.colors_available:
-                                try:
-                                    first = sector.objects[0]
-                                    otype = first.get("type")
-                                    pair = self.parent.obj_color_map.get(otype)
-                                    if pair:
-                                        attr = curses.color_pair(pair) | curses.A_BOLD
-                                    else:
-                                        attr = curses.A_NORMAL
-                                except Exception:
-                                    attr = curses.A_NORMAL
-                                ch = obj_marker
+                            # --- RARE ITEM GLOW ---
+                            rare_ids = {
+                                "module_captain_override",
+                                "module_engineering_stabilizer",
+                                "module_biometric_seal"
+                                }
+                            
+                            rare_present = False
+                            if sector and sector.objects:
+                                for o in sector.objects:
+                                    if isinstance(o, dict) and o.get("id") in rare_ids:
+                                        rare_present = True
+                                        break
 
-                            # sector color (only if no object)
-                            elif self.parent.colors_available:
+                            # pokud je rare item → sektor jemně září
+                            if rare_present and self.parent.colors_available:
+                                # použijeme výraznější barvu (např. žlutou)
+                                glow_pair = self.parent.obj_color_map.get("rare", None)
+                                if glow_pair:
+                                    attr = curses.color_pair(glow_pair) | curses.A_BOLD
+                                else:
+                                    # fallback: žlutá
+                                    attr = curses.color_pair(3) | curses.A_BOLD
+                            else:
+                                # běžná sektorová barva
                                 stype = sector.type
                                 pair = self.parent.sector_color_map.get(stype)
                                 if pair:
                                     attr = curses.color_pair(pair)
+                                
+
                                 else:
                                     attr = curses.A_NORMAL
-
-                            else:
-                                attr = curses.A_NORMAL
 
                     try:
                         win.addstr(1 + y, 1 + x, str(ch), attr)

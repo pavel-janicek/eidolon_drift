@@ -124,6 +124,7 @@ class OutputRenderer:
             # object colors
             self.obj_color_map = {
                 "item": 30,
+                "rare": 50,
             }
 
             # sector colors (only if no object)
@@ -161,6 +162,8 @@ class OutputRenderer:
                 curses.init_pair(32, 160, -1)  # bridge (red)
                 curses.init_pair(33, 141, -1)  # engineering (light lavender)
                 curses.init_pair(34, 189, -1)  # airlock (silver-blue)
+                curses.init_pair(50, curses.COLOR_WHITE, curses.COLOR_YELLOW)
+
                 self.colors_available = True
         except Exception:
             self.colors_available = False
