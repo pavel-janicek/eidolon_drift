@@ -1,6 +1,6 @@
 # Eidolon Drift
 
-**Version 1.2.0** - A Terminal-Based Incident Response Game
+**Version 1.4.0** - A Terminal-Based Incident Response Game
 
 ** Controller supported game ***
 
@@ -30,7 +30,7 @@ The game features atmospheric horror elements with sanity mechanics that affect 
 
 ### Movement & Controls
 - **WASD**: Move up/down/left/right
-- **Commands**: Type `help` for available commands
+- **Commands**: Type `h` for available commands
 - **Quit**: Press 'q' to exit
 
 ### Sanity System
@@ -45,6 +45,7 @@ The game features atmospheric horror elements with sanity mechanics that affect 
 - Areas outside vision appear as empty space
 
 ### Objectives
+- Unlock Escape pod
 - Navigate to the Command Module
 - Use the escape pod to complete the mission
 - Survive environmental hazards and maintain sanity
@@ -54,6 +55,7 @@ The game features atmospheric horror elements with sanity mechanics that affect 
 ### Prerequisites
 - Python 3.6+ (tested on 3.6-3.13)
 - Terminal with curses support (Linux/macOS/Windows WSL)
+- pygame installed
 
 ### Setup
 1. Clone or download the project
@@ -82,47 +84,15 @@ The game uses only standard Python libraries:
 - `random` (built-in)
 - `json` (built-in)
 
-## Project Structure
-
-```
-eidolon_drift/
-├── main.py                 # Game entry point
-├── requirements.txt        # Dependencies (currently empty)
-├── eidolon/               # Main game package
-│   ├── __init__.py
-│   ├── config.py          # Game configuration
-│   ├── game_loop.py       # Main game logic
-│   ├── generation/        # Map generation
-│   │   ├── map_generator.py
-│   │   └── object_loader.py
-│   ├── io/                # Input/Output handling
-│   │   ├── input_handler.py
-│   │   ├── output_renderer.py
-│   │   ├── map_renderer.py
-│   │   ├── status_renderer.py
-│   │   └── description_renderer.py
-│   ├── mechanics/         # Game mechanics
-│   │   ├── commands.py
-│   │   ├── movement.py
-│   │   ├── events.py
-│   │   └── event_loader.py
-│   └── world/             # Game world objects
-│       ├── map.py
-│       ├── player.py
-│       ├── sector.py
-│       └── vision.py
-├── data/                  # Game data files
-│   ├── ambient_messages.json
-│   └── objects/
-└── scripts/               # Utility scripts
-    └── test_curses_colors.py
-```
 
 ## Configuration
 
 Game settings can be modified in `eidolon/config.py`:
 
 - `SEED`: Set for reproducible map generation
+- `TICKS_TO_SCAN`: How long should "Scanning" sector take
+- `FRAME_TIME`: For CPU load. 1/30 == 30 FPS
+- `LOG_LEVEL`: Lowest level of logged things. Most loggers are in game set to DEBUG, but main errors/crashesh have WARN/ERROR
 - `GAME_VERSION`: Current version number
 - Map generation parameters for customization
 
@@ -152,7 +122,7 @@ This project is open source. Feel free to use, modify, and distribute.
 
 ## Credits
 
-- **AI Author**: GitHub Copilot
+- **AI Author**: GitHub Copilot + Microsoft Copilot
 - **Human Testing & Refinement**: Manual playtesting and bug fixes
 - **Inspiration**: Terminal-based games like Dwarf Fortress, NetHack
 
