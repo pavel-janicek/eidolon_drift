@@ -86,7 +86,21 @@ class MapRenderer:
                     else:
                         ch = self.parent.map.get_tile_char(x, y) or "."
                         sector = self.parent.map.get_sector(x, y)
+    
+                        # --- ESCAPE POD MARKER (priority override) ---
+                        if self._should_show_escape_pod(sector) and self.parent.colors_available:
+                            ch = "^"
+                            glow_pair = self.parent.obj_color_map.get("rare")
+                            if glow_pair:
+                                attr = curses.color_pair(glow_pair) | curses.A_BOLD
+                            else:
+                                attr = curses.color_pair(2) | curses.A_BOLD
+                            # IMPORTANT: skip normal object rendering
+                            win.addstr(1 + y, 1 + x, str(ch), attr)
+                            continue
+                        
                         obj_marker = None
+
                         if sector and sector.objects:
                             for o in sector.objects:
                                 if isinstance(o, dict) and o.get("type") == "log":
@@ -118,7 +132,7 @@ class MapRenderer:
                                 for o in sector.objects:
                                     if isinstance(o, dict) and o.get("id") in rare_ids:
                                         rare_present = True
-                                        break
+                                        break       
 
                             # pokud je rare item → sektor jemně září
                             if rare_present and self.parent.colors_available:
@@ -164,3 +178,12 @@ class MapRenderer:
         dy = y - p.y
         dist = math.sqrt(dx * dx + dy * dy)
         return dist > radius
+    
+    def _should_show_escape_pod(self, sector):
+        escape_pod_present = False
+        if sector and sector.objects:
+            for o in sector.objects:
+                if isinstance(o, dict) and o.get("id") == "escape-pod":
+                    escape_pod_present = True
+        return escape_pod_present and self.parent.game._is_escape_ready()
+    

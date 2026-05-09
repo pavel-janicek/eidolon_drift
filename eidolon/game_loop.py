@@ -896,6 +896,13 @@ class Game:
             self.logger.debug("escape dialog finished, resetting gameState to QUIT")
             self.gameState = GameState.QUIT
 
+    def _is_escape_ready(self):
+        return (
+            getattr(self, "override_captain", False)
+            and getattr(self, "override_stabilizer", False)
+            and getattr(self, "override_biometric", False)
+        )        
+
 
     def _build_interact_options(self, sector):
         options = []
