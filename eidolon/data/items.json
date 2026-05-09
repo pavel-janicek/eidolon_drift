@@ -312,6 +312,7 @@
       "flag": "override_captain",
       "value": true
     },
+    "flavor_text": "Captain's key has been used. Override code accepted.",
     "density_modifier": 1.0
   },
   {
@@ -326,6 +327,7 @@
       "flag": "override_stabilizer",
       "value": true
     },
+    "flavor_text": "Engineering stabilizer activated. Temporal drift stabilized.",
     "density_modifier": 1.0
   },
   {
@@ -340,6 +342,7 @@
       "flag": "override_biometric",
       "value": true
     },
+    "flavor_text": "Biometric seal verified. Identity confirmed.",
     "density_modifier": 1.0
   }
 ]

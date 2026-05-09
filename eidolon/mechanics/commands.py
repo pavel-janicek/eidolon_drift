@@ -623,6 +623,7 @@ def _cmd_use(game, target):
     if action == "flag":
         flag_name = on_use.get("flag")
         flag_value = on_use.get("value", True)
+        flavor_text = obj.get("flavor_text")
 
         # nastav flag do game objektu
         try:
@@ -631,7 +632,7 @@ def _cmd_use(game, target):
             pass
 
         # modul se nespotřebovává (ale můžeš změnit)
-        return f"You activate the {obj.get('title','module')}. Flag '{flag_name}' set to {flag_value}."
+        return f"You activate the {obj.get('title','module')}. {flavor_text or ''}"
     
 
     # ESCAPE action
