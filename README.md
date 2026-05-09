@@ -20,7 +20,6 @@ The game features atmospheric horror elements with sanity mechanics that affect 
 - **Sanity System**: Your mental state affects vision range and gameplay
 - **Interactive Environment**: Explore different ship sectors with unique characteristics
 - **Atmospheric Messaging**: Ambient messages and events create immersion
-- **Multiple Themes**: Dark, retro, and high-contrast color schemes
 - **Comprehensive Help System**: In-game commands for navigation and information
 
 ## Game Mechanics
@@ -124,7 +123,6 @@ eidolon_drift/
 Game settings can be modified in `eidolon/config.py`:
 
 - `SEED`: Set for reproducible map generation
-- `DEFAULT_THEME`: Color theme ("dark", "retro", "high_contrast")
 - `GAME_VERSION`: Current version number
 - Map generation parameters for customization
 
