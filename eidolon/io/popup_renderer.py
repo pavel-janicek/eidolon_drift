@@ -121,15 +121,12 @@ class PopupRenderer:
             return
 
         if self.mode == GameState.SCANNING:
-            self.logger.debug("Rendering scanning popup.")
             self._render_scanning(stdscr)
 
         elif self.mode == GameState.INTERACT:
-            self.logger.debug("Rendering interact popup.")
             self._render_interact(stdscr)
 
         elif self.mode == GameState.CONFIRM:
-            self.logger.debug("Rendering confirm popup.")
             self._render_confirm(stdscr)
 
     # ------------------------------------------------------------

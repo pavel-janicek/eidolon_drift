@@ -939,9 +939,21 @@ class Game:
             if out:
                 self.push_message(out)
             return
+        
+        if action == "inspect":
+            out = cmdmod._inspect_object(self, payload, full=False)
+            if out:
+                self.push_message(out)
+            return
+        
+        if action == "inspect_full":
+            out = cmdmod._inspect_object(self, payload, full=True)
+            if out:
+                self.push_message(out)
+            return
 
         # příkazy, které vrací text
-        if action in ("inspect", "inspect_full", "decrypt"):
+        if action in ("inspect_full", "decrypt"):
             cmd = f"{action} {payload['id']}"
             out = cmdmod.handle_command(self, cmd)
             if out:
