@@ -98,16 +98,16 @@ class MapRenderer:
                             # IMPORTANT: skip normal object rendering
                             win.addstr(1 + y, 1 + x, str(ch), attr)
                             continue
-                        
+
                         obj_marker = None
 
                         if sector and sector.objects:
                             for o in sector.objects:
                                 if isinstance(o, dict) and o.get("type") == "log":
-                                    obj_marker = "l"
+                                    ch = "l"
                                     break
                                 if isinstance(o, dict) and o.get("type") == "anomaly":
-                                    obj_marker = "x"
+                                    ch = "x"
                                     break
                                 if isinstance(o, dict) and o.get("type") == "item":
                                     obj_marker = "i"
