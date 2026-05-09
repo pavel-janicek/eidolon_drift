@@ -2,7 +2,9 @@ eidolon-drift (1.4.0) unstable; urgency=medium
   * fix game being CPU hungry and limit it to 30 FPS
   * add special items needed to use escape pod
   * add flair to game
+  * Unify keyboard and joystick usage of primary/secondary button
 
+-- Pavel Janíček <pavel.janicek@live.com>  Sat, 9 May 2026 20:08:00 +0200
 
 
 eidolon-drift (1.3.0) unstable; urgency=medium
