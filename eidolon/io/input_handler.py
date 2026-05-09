@@ -230,6 +230,12 @@ class InputHandler:
             self.action_map = final_map.get("action_map", {})
 
             self.logger.info("InputHandler: using pygame joystick '%s'", j.get_name())
+            _PYGAME.event.set_blocked(None)
+            _PYGAME.event.set_allowed([
+                _PYGAME.JOYAXISMOTION,
+                _PYGAME.JOYBUTTONDOWN,
+                _PYGAME.JOYBUTTONUP
+            ])
         except Exception:
             self.logger.exception("InputHandler: failed to init pygame joystick")
 
@@ -470,20 +476,35 @@ class InputHandler:
             self._enqueue_event({"type": "control", "key": "SIGINT"})
             return
         
+        # Escape key
+        if ch == 27:
+            self._enqueue_event({"type": "action", "name": "cancel"})
+            return
+        
         # enter
         if ch in (10, 13, curses.KEY_ENTER):
-            self._enqueue_event({"type": "action", "name": "confirm"})
-            return  
+            game = self.game if hasattr(self, "game") else None
+            if game.gameState in (GameState.INTERACT, GameState.CONFIRM):
+                self._enqueue_event({"type": "action", "name": "confirm"})
+            else:
+                self._enqueue_event({"type": "action", "name": "interact"})
+            return
+           
 
         # arrow keys and WASD
         try:
             if ch == curses.KEY_UP or ch in (ord('w'), ord('W')):
-                self._enqueue_event({"type": "move_dir", "dir": "UP"})
-                self._enqueue_event({"type": "action", "name": "navigate_up"})
+                if self.game and getattr(self.game, "gameState", None) == GameState.INTERACT:
+                    self._enqueue_event({"type": "action", "name": "navigate_up"})
+                else:    
+                    self._enqueue_event({"type": "move_dir", "dir": "UP"})
+            
                 return
             if ch == curses.KEY_DOWN or ch in (ord('s'), ord('S')):
-                self._enqueue_event({"type": "move_dir", "dir": "DOWN"})
-                self._enqueue_event({"type": "action", "name": "navigate_down"})
+                if self.game and getattr(self.game, "gameState", None) == GameState.INTERACT:
+                    self._enqueue_event({"type": "action", "name": "navigate_down"})
+                else:
+                    self._enqueue_event({"type": "move_dir", "dir": "DOWN"})    
                 return
             if ch == curses.KEY_LEFT or ch in (ord('a'), ord('A')):
                 self._enqueue_event({"type": "move_dir", "dir": "LEFT"})
@@ -495,108 +516,14 @@ class InputHandler:
             pass
 
         # quick command shortcuts
-        if ch in (ord('h'), ord('H')):
+        if ch in (ord('h'), ord('H'), ord('?')):
             self._enqueue_event({"type": "command", "cmd": "help"})
             return
         if ch in (ord('c'), ord('C')):
-            self._enqueue_event({"type": "command", "cmd": "scan"})
-            return
-        if ch in (ord('l'), ord('L')):
-            self._enqueue_event({"type": "command", "cmd": "logs"})
-            return
-        if ch in (ord('x'), ord('X')):
-            self._enqueue_event({"type": "action", "name": "use"})
-            return
-        if ch in (ord('j'), ord('J')):
-            self._enqueue_event({"type": "action", "name": "inspect"})
-            return
-        if ch in (ord('q'), ord('Q')):
-            self._enqueue_event({"type": "control", "key": "QUIT"})
-            return
-        if ch in (ord('i'), ord('I')):
-            self._enqueue_event({"type": "action", "name": "interact"})
-            return
-        if ch in (27, ord('k'), ord('K')):
             self._enqueue_event({"type": "action", "name": "cancel"})
             return
 
-       # colon command entry: ':' then read line (blocking)
-        if ch == ord(':'):
-            try:
-                # prepare terminal for line input
-                try:
-                    # switch to blocking read so getstr waits for Enter
-                    self.stdscr.nodelay(False)
-                except Exception:
-                    pass
-
-                # show cursor and enable echo so user sees typed characters
-                try:
-                    curses.curs_set(1)
-                except Exception:
-                    pass
-                try:
-                    curses.echo()
-                except Exception:
-                    pass
-
-                # draw a simple prompt on the bottom line
-                try:
-                    h, w = self.stdscr.getmaxyx()
-                    prompt = ":"
-                    # clear the bottom line
-                    try:
-                        self.stdscr.move(h - 1, 0)
-                        self.stdscr.clrtoeol()
-                    except Exception:
-                        pass
-                    try:
-                        self.stdscr.addstr(h - 1, 0, prompt)
-                    except Exception:
-                        # fallback: try addstr without coords
-                        try:
-                            self.stdscr.addstr(prompt)
-                        except Exception:
-                            pass
-                    try:
-                        self.stdscr.refresh()
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
-
-                # blocking read of the rest of the line
-                s = self.stdscr.getstr().decode(errors="ignore").strip()
-                if s:
-                    self._enqueue_event({"type": "command", "cmd": s})
-            except Exception:
-                # swallow errors but ensure terminal state restored
-                try:
-                    curses.noecho()
-                except Exception:
-                    pass
-            finally:
-                # restore non-blocking mode and hide cursor, disable echo
-                try:
-                    curses.noecho()
-                except Exception:
-                    pass
-                try:
-                    curses.curs_set(0)
-                except Exception:
-                    pass
-                try:
-                    self.stdscr.nodelay(True)
-                except Exception:
-                    pass
-            return
-
-        # printable fallback: enqueue as single-char command
-        if 0 <= ch < 256:
-            chs = chr(ch)
-            if chs.isprintable():
-                self._enqueue_event({"type": "command", "cmd": chs})
-    
+       
 
     # --- utilities / cleanup ---------------------------------------------
     def stop(self):

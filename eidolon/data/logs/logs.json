@@ -48,5 +48,77 @@
     "id": "log_10",
     "title": "Medical Note - Dr. Kline",
     "text": "Several crew members are showing symptoms of nausea and headaches. I suspect it's related to the anomaly, but I can't be sure without proper equipment."
+  },
+  {
+    "id": "log_captain_1",
+    "type": "log",
+    "name": "captain_log_1",
+    "title": "Captain’s Log – First Anomaly",
+    "sector_type": "BRIDGE",
+    "content_template": "{text}",
+    "content": "We detected a signal outside all known frequency bands. Navigation reports a temporal offset of ±0.4 seconds. I’ve ordered the Eidolon module isolated until we understand what’s happening. If the drift increases, we abort the experiment.",
+    "fragmented_chance": 0.15
+  },
+  {
+    "id": "log_engineering_1",
+    "type": "log",
+    "name": "engineering_log_1",
+    "title": "Engineering Report – Core Instability",
+    "sector_type": "ENGINEERING",
+    "content_template": "{text}",
+    "content": "Quantum core is resonating with its own future state. Systems revert to earlier configurations—doors locking themselves, lights resetting. Time inside the ship is no longer consistent. I recommend immediate evacuation.",
+    "fragmented_chance": 0.20
+  },
+  {
+    "id": "log_medbay_1",
+    "type": "log",
+    "name": "medbay_log_1",
+    "title": "Medical Log – Crew Symptoms",
+    "sector_type": "MEDBAY",
+    "content_template": "{text}",
+    "content": "Crew reports intrusive memories, auditory hallucinations of their own voices, and the sensation of being observed. Symptoms are not psychological. Temporal interference is affecting cognitive stability. If drift continues, identity loss is inevitable.",
+    "fragmented_chance": 0.25
+  },
+  {
+    "id": "log_science_1",
+    "type": "log",
+    "name": "science_log_1",
+    "title": "Science Log – Eidolon Reacts",
+    "sector_type": "AIRLOCK",
+    "content_template": "{text}",
+    "content": "The module is rewriting its own diagnostics. Access codes fail without reason. It is transmitting signals we never programmed. I can’t tell if this is a malfunction… or intent.",
+    "fragmented_chance": 0.30
+  },
+  {
+    "id": "log_captain_2",
+    "type": "log",
+    "name": "captain_log_2",
+    "title": "Captain’s Log – Final Entry",
+    "sector_type": "BRIDGE",
+    "content_template": "{text}",
+    "content": "Evacuation ordered. Some crew stayed behind to shut down the module. I heard my own voice over the intercom—older, strained—warning me not to deactivate Eidolon. 'If you shut it down, it happens again.' If you’re reading this… you’re not the first.",
+    "fragmented_chance": 0.35
+  },
+
+  {
+    "id": "log_crew_fragment_1",
+    "type": "log",
+    "name": "crew_fragment_1",
+    "title": "Crew Note – Lost Time",
+    "sector_type": "CREW",
+    "content_template": "{text}",
+    "content": "I went to sleep at 22:00. Woke up at 21:47. My own log entry for tomorrow was already written. I don’t remember writing it.",
+    "fragmented_chance": 0.40
+  },
+  {
+    "id": "log_engineering_fragment_1",
+    "type": "log",
+    "name": "engineering_fragment_1",
+    "title": "Engineering Fragment – Echo",
+    "sector_type": "ENGINEERING",
+    "content_template": "{text}",
+    "content": "Audio log: footsteps in the corridor. Pause. Then the same footsteps again… but reversed, like time folding back on itself.",
+    "fragmented_chance": 0.45
   }
+
 ]

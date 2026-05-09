@@ -71,7 +71,7 @@ from eidolon.io.description_renderer import DescriptionRenderer
 from eidolon.io.map_renderer import MapRenderer
 from eidolon.io.status_renderer import StatusRenderer
 from eidolon.world.map import Map
-from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, DEFAULT_THEME, GAME_VERSION
+from eidolon.config import MIN_MAP_WIDTH, MIN_MAP_HEIGHT, GAME_VERSION
 
 MIN_MAP_W = MIN_MAP_WIDTH if "MIN_MAP_WIDTH" in globals() else 10
 MIN_MAP_H = MIN_MAP_HEIGHT if "MIN_MAP_HEIGHT" in globals() else 5
@@ -91,39 +91,17 @@ class OutputRenderer:
         self.msg_win = None
         self.desc_win = None  # new: description window
 
-        # colors and theme
+        # colors
         self.colors_available = False
-        self.theme = DEFAULT_THEME if "DEFAULT_THEME" in globals() else "dark"
-        self.THEMES = {
-            "dark": {
-                1: (curses.COLOR_CYAN, -1),
-                2: (curses.COLOR_YELLOW, -1),
-                3: (curses.COLOR_GREEN, -1),
-                4: (curses.COLOR_RED, -1),
-                5: (curses.COLOR_MAGENTA, -1),
-            },
-            "retro": {
-                1: (curses.COLOR_WHITE, curses.COLOR_BLUE),
-                2: (curses.COLOR_BLACK, curses.COLOR_YELLOW),
-                3: (curses.COLOR_BLACK, curses.COLOR_GREEN),
-                4: (curses.COLOR_WHITE, curses.COLOR_RED),
-                5: (curses.COLOR_BLACK, curses.COLOR_MAGENTA),
-            },
-            "high_contrast": {
-                1: (curses.COLOR_WHITE, curses.COLOR_BLACK),
-                2: (curses.COLOR_BLACK, curses.COLOR_WHITE),
-                3: (curses.COLOR_YELLOW, curses.COLOR_BLACK),
-                4: (curses.COLOR_RED, curses.COLOR_BLACK),
-                5: (curses.COLOR_MAGENTA, curses.COLOR_BLACK),
-            },
-        }
+
+        
 
         self._init_colors()
         try:
-            self.apply_theme(self.theme)
             # object colors
             self.obj_color_map = {
                 "item": 30,
+                "rare": 50,
             }
 
             # sector colors (only if no object)
@@ -161,31 +139,12 @@ class OutputRenderer:
                 curses.init_pair(32, 160, -1)  # bridge (red)
                 curses.init_pair(33, 141, -1)  # engineering (light lavender)
                 curses.init_pair(34, 189, -1)  # airlock (silver-blue)
+                curses.init_pair(50, curses.COLOR_WHITE, curses.COLOR_YELLOW)
+
                 self.colors_available = True
         except Exception:
             self.colors_available = False
 
-    def apply_theme(self, name):
-        if not curses.has_colors():
-            self.colors_available = False
-            return False
-        theme = self.THEMES.get(name)
-        if not theme:
-            return False
-        try:
-            curses.start_color()
-            try:
-                curses.use_default_colors()
-            except Exception:
-                pass
-            for pair_idx, (fg, bg) in theme.items():
-                curses.init_pair(pair_idx, fg, bg)
-            self.colors_available = True
-            self.theme = name
-            return True
-        except Exception:
-            self.colors_available = False
-            return False
 
     def _layout(self):
         maxy, maxx = self.stdscr.getmaxyx()

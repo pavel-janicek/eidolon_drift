@@ -81,7 +81,7 @@ from eidolon.mechanics import commands as cmdmod
 from eidolon.mechanics.events import EventEngine
 from eidolon.mechanics.event_loader import load_event_defs
 from eidolon.mechanics.game_state import GameState
-from eidolon.config import LOG_LEVEL, TICKS_TO_SCAN
+from eidolon.config import FRAME_TIME, LOG_LEVEL, TICKS_TO_SCAN, FRAME_TIME
 
 
 class Game:
@@ -205,7 +205,7 @@ class Game:
             self.push_message("Controller detected. Use face buttons for actions and D-pad/Left Stick for movement.")
             self.push_message("Action buttons: X=Primary, Circle=Secondary")
         else:    
-            self.push_message("Type ':help' or '?' for commands. Use WASD to move.")
+            self.push_message("Actions: [I/Enter] Interact, [H/?] Help, [C/ ESC] Cancel/Back")
         
 
     def push_message(self, text):
@@ -222,6 +222,13 @@ class Game:
         except Exception:
             pass
 
+    def frame_limiter(self):
+        self._last_frame = getattr(self, "_last_frame", 0)
+        now = time.time()
+        if now - self._last_frame < FRAME_TIME:
+            time.sleep(FRAME_TIME - (now - self._last_frame))
+        self._last_frame = now    
+
     
     def run(self, stdscr=None):
        
@@ -233,6 +240,9 @@ class Game:
 
         try:
             while True:
+
+                # --- FRAME LIMITER ---
+                self.frame_limiter()
 
                 # ----------------------------------------------------
                 # 1) RENDER
@@ -281,7 +291,7 @@ class Game:
                         self.gameState = GameState.INTERACT
                         self.popup.open_interact(self._build_interact_options(sector))
                     # scanning ignores input
-                    time.sleep(0.02)
+                    self.frame_limiter()
                     continue
 
                 # INTERACT / CONFIRM
@@ -293,7 +303,7 @@ class Game:
                     if pop_result:
                         self.logger.debug("Popup result: %s", pop_result)
                         self._process_popup_result(pop_result)
-                    time.sleep(0.02)
+                    self.frame_limiter()
                     continue
 
 
@@ -308,7 +318,7 @@ class Game:
                         self.handle_token(token)
 
                     self.tick()
-                    time.sleep(0.02)
+                    self.frame_limiter()
 
         except KeyboardInterrupt:
             self.gameState = GameState.QUIT_CONFIRM
@@ -853,26 +863,46 @@ class Game:
 
     def _handle_escape_confirm(self):
         """
-        Spustí escape dialog pokud je gameState ESCAPE.
-        Po návratu vždy flag vyčistí, aby dialog neproblikl znovu.
+        Spustí escape dialog pokud jsou splněny všechny podmínky.
+        Po návratu nastaví QUIT pouze pokud dialog skutečně proběhl.
         """
         self.logger.debug("escape function called")
-        if not (self.gameState == GameState.ESCAPE):
-            self.gameState = GameState.ESCAPE
+
+        # --- kontrola modulů ---
+        if not getattr(self, "override_captain", False):
+            self.push_message("You cannot escape without the Captain's override code.")
+            self.gameState = GameState.RUNNING
+            return
+
+        if not getattr(self, "override_stabilizer", False):
+            self.push_message("Escape pod locked: Engineering Stabilizer missing.")
+            self.gameState = GameState.RUNNING
+            return
+
+        if not getattr(self, "override_biometric", False):
+            self.push_message("Escape pod locked: Biometric Seal from medbay missing.")
+            self.gameState = GameState.RUNNING
+            return
+
+        # --- všechny podmínky splněny → spustíme dialog ---
+        self.gameState = GameState.ESCAPE
 
         try:
-            # zavolat dialog (blokující)
-            self._show_escape_dialog()
+            self._show_escape_dialog()   # blokující
         except KeyboardInterrupt:
-            # ignoruj opakované Ctrl+C během dialogu
-            try:
-                self.logger.debug("[debug] escape dialog interrupted by Ctrl+C")
-            except Exception:
-                pass
+            self.logger.debug("[debug] escape dialog interrupted by Ctrl+C")
         finally:
-            # vždy vyčistit flag, aby run() pokračovalo normálně
+            # escape dialog proběhl → ukončíme hru
             self.logger.debug("escape dialog finished, resetting gameState to QUIT")
             self.gameState = GameState.QUIT
+
+    def _is_escape_ready(self):
+        return (
+            getattr(self, "override_captain", False)
+            and getattr(self, "override_stabilizer", False)
+            and getattr(self, "override_biometric", False)
+        )        
+
 
     def _build_interact_options(self, sector):
         options = []
@@ -904,8 +934,26 @@ class Game:
         self.popup.close()
         self.gameState = GameState.RUNNING
 
+        if action == "use":
+            out = cmdmod._use_object(self, payload)
+            if out:
+                self.push_message(out)
+            return
+        
+        if action == "inspect":
+            out = cmdmod._inspect_object(self, payload, full=False)
+            if out:
+                self.push_message(out)
+            return
+        
+        if action == "inspect_full":
+            out = cmdmod._inspect_object(self, payload, full=True)
+            if out:
+                self.push_message(out)
+            return
+
         # příkazy, které vrací text
-        if action in ("use", "inspect", "inspect_full", "decrypt"):
+        if action == "decrypt":
             cmd = f"{action} {payload['id']}"
             out = cmdmod.handle_command(self, cmd)
             if out:

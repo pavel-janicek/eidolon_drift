@@ -299,5 +299,50 @@
       "ENGINEERING": 0.06
     },
     "density_modifier": 1.4
+  },
+  {
+    "id": "module_captain_override",
+    "type": "item",
+    "name": "captain_override",
+    "title": "Captain Override Key",
+    "sector_type": "BRIDGE",
+    "description": "Encrypted command key used by the captain to authorize emergency evacuation. Required to unlock the escape pod’s command interface.",
+    "on_use": {
+      "action": "flag",
+      "flag": "override_captain",
+      "value": true
+    },
+    "flavor_text": "Captain's key has been used. Override code accepted.",
+    "density_modifier": 1.0
+  },
+  {
+    "id": "module_engineering_stabilizer",
+    "type": "item",
+    "name": "engineering_stabilizer",
+    "title": "Engineering Stabilizer Module",
+    "sector_type": "ENGINEERING",
+    "description": "Portable stabilizer designed to counteract local temporal drift. Without it, the escape pod’s launch sequence cannot synchronize with real-time.",
+    "on_use": {
+      "action": "flag",
+      "flag": "override_stabilizer",
+      "value": true
+    },
+    "flavor_text": "Engineering stabilizer activated. Temporal drift stabilized.",
+    "density_modifier": 1.0
+  },
+  {
+    "id": "module_biometric_seal",
+    "type": "item",
+    "name": "biometric_seal",
+    "title": "Biometric Seal",
+    "sector_type": "MEDBAY",
+    "description": "A medical-grade biometric authenticator containing encoded crew signatures. Required to satisfy the escape pod’s identity verification protocol.",
+    "on_use": {
+      "action": "flag",
+      "flag": "override_biometric",
+      "value": true
+    },
+    "flavor_text": "Biometric seal verified. Identity confirmed.",
+    "density_modifier": 1.0
   }
 ]

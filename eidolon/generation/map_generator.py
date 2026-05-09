@@ -116,12 +116,12 @@ class MapGenerator:
             # system entropy seed for true randomness
             sys_seed = random.SystemRandom().randint(0, 2**30)
             self.rng = random.Random(sys_seed)
-            print(
-                f"[mapgen][debug] using system-random seed={sys_seed}", file=sys.stderr
+            self.logger.debug(
+                f"[mapgen][debug] using system-random seed={sys_seed}"
             )
         else:
             self.rng = random.Random(int(use_seed))
-            print(f"[mapgen][debug] using seed={int(use_seed)}", file=sys.stderr)
+            self.logger.debug(f"[mapgen][debug] using seed={int(use_seed)}")
 
         self.base_density = (
             float(base_density)
@@ -142,13 +142,11 @@ class MapGenerator:
             if self.data_dir
             else Path("data/objects/objects.json")
         )
-        print(
-            f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}",
-            file=sys.stderr,
+        self.logger.debug(
+            f"[mapgen][debug] loaded {len(self.templates)} templates from {data_path}"
         )
-        print(
-            f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json",
-            file=sys.stderr,
+        self.logger.debug(
+            f"[mapgen][debug] loaded {len(self.log_pool)} logs from logs.json"
         )
 
         self.sector_types = self.config.get(
@@ -160,6 +158,12 @@ class MapGenerator:
             for t in self.templates
             if isinstance(t, dict) and t.get("kind") == "environment"
         }
+        self.templates_by_id = {
+            t["id"]: t
+            for t in self.templates
+            if isinstance(t, dict) and "id" in t
+        }
+
 
     # --- helper methods for region placement ---------------------------------
     def _rects_overlap(self, a, b, gap=0):
@@ -395,6 +399,8 @@ class MapGenerator:
             )
             self.logger.debug(f"Escape pod placed at {ex_x}, {ex_y}")
 
+        self._place_special_modules(grid)    
+
         # debug summary of placed objects
         total = 0
         per_type = {}
@@ -475,6 +481,7 @@ class MapGenerator:
                         sector.objects = []
                     sector.objects.append(obj)
 
+
                     if tpl.get("kind") == "template" and tpl.get("type") == "anomaly":
                         event_id = tpl.get("linger_event", tpl.get("id"))
                         if event_id:
@@ -490,6 +497,39 @@ class MapGenerator:
                     file=sys.stderr,
                 )
                 continue
+
+    def _place_special_modules(self, grid):
+        special = [
+            ("module_captain_override", "BRIDGE"),
+            ("module_engineering_stabilizer", "ENGINEERING"),
+            ("module_biometric_seal", "MEDBAY")
+        ]
+
+        for module_id, sector_type in special:
+            sector = self._find_sector_by_type(sector_type, grid=grid)
+            if not sector:
+                self.logger.warning(f"[mapgen] WARNING: No sector of type {sector_type} found!")
+                continue
+
+        # vytvořit objekt z template
+            tpl = self.templates_by_id.get(module_id)
+            if not tpl:
+                self.logger.error(f"[mapgen] ERROR: Template {module_id} not found!")
+                continue
+
+            obj = self._instantiate_from_template(tpl, sector)
+            sector.objects.append(obj)
+
+            self.logger.debug(f"[mapgen] placed {module_id} at ({sector.x},{sector.y}) in sector {sector.type}")
+
+    def _find_sector_by_type(self, t, grid=None):
+        grid = grid or self.current_grid
+        for sector in grid.values():
+            if sector.type == t:
+                return sector
+        return None
+        
+        
 
     def _instantiate_from_template(self, tpl, sector):
         obj = dict(tpl) if isinstance(tpl, dict) else {"name": str(tpl)}
@@ -515,6 +555,8 @@ class MapGenerator:
                 selected_log = self.rng.choice(self.log_pool)
 
             if selected_log:
+                obj["id"] = selected_log["id"]
+                obj["title"] = selected_log.get("title", obj.get("title"))
                 template_str = obj.get("content_template", "{text}")
                 content = template_str.format(
                     text=selected_log.get("text", ""),
