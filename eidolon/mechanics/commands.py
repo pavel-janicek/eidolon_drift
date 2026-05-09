@@ -26,9 +26,6 @@ def handle_command(game, raw_cmd: str) -> str:
     if verb in ("help", "?"):
         return _cmd_help(game)
 
-    if verb == "scan":
-        return _cmd_scan(game)
-
     if verb == "logs":
         return _cmd_logs(game)
 
@@ -59,43 +56,6 @@ def _cmd_help(game):
     for line in lines:
         game.push_message(line)
 
-
-def _cmd_scan(game):
-    sector = game.map.get_sector(game.player.x, game.player.y)
-    if sector is None:
-        return ["Scan: no sector data."]
-
-    env = sector.environment or {}
-
-    lines = []
-    lines.append(f"Scan results for {sector.name}:")
-
-    # environment keys
-    if isinstance(env, dict) and env:
-        for k, v in env.items():
-            lines.append(f"  {k}: {v}")
-    else:
-        lines.append("  No special environmental readings.")
-
-    # objects summary
-    if sector.objects:
-        lines.append(f"  Objects detected: {len(sector.objects)}")
-        sample = []
-        for o in sector.objects[:5]:
-            if isinstance(o, dict):
-                sample.append(o.get("name", "object"))
-            else:
-                sample.append(str(o))
-        lines.append("  " + ", ".join(sample))
-    else:
-        lines.append("  No objects detected.")
-
-    # random noise / hint
-    if random.random() < 0.12:
-        lines.append("  [ANOMALY] faint electromagnetic interference detected.")
-
-    for line in lines:
-        game.push_message(line)
 
 
 def _cmd_logs(game):

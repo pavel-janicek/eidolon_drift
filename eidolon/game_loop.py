@@ -953,7 +953,7 @@ class Game:
             return
 
         # příkazy, které vrací text
-        if action in ("inspect_full", "decrypt"):
+        if action == "decrypt":
             cmd = f"{action} {payload['id']}"
             out = cmdmod.handle_command(self, cmd)
             if out:
